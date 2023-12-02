@@ -332,7 +332,7 @@ struct PipeGroup create_pipe(VkDevice dev, VkExtent2D extent,
   printf("fragment shader binaries released.\n");
   free(p_vert_code);
   printf("vertex shader binaries released.\n");
-  return (struct PipeGroup){pipe, pipe_layout};
+  return (struct PipeGroup){pipe_layout, pipe};
 }
 
 void create_frame_buffs(struct RenderPassGroup *g_rendp, VkDevice dev,
@@ -342,8 +342,8 @@ void create_frame_buffs(struct RenderPassGroup *g_rendp, VkDevice dev,
   // create framebuffer
   //
   VkFramebufferCreateInfo frame_buff_infos[img_count];
-  VkFramebuffer frame_buffs[img_count];
-  VkImageView img_attachs[img_count];
+  VkFramebuffer *frame_buffs = malloc(img_count * sizeof(VkFramebuffer));
+  VkImageView *img_attachs = malloc(img_count * sizeof(VkImageView));
   for (uint32_t i = 0; i < img_count; i++) {
     img_attachs[i] = img_views[i];
     frame_buff_infos[i].sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -360,7 +360,7 @@ void create_frame_buffs(struct RenderPassGroup *g_rendp, VkDevice dev,
     printf("framebuffer %d created.\n", i);
   }
   g_rendp->frame_buff_count = img_count;
-  g_rendp->frame_buffs = frame_buffs[0];
+  g_rendp->frame_buffs = frame_buffs;
 }
 
 void render_frame(VkDevice dev, VkSwapchainKHR swap,
@@ -449,6 +449,6 @@ void destroy_render(struct DevGroup *dev, struct PipeGroup *pipe,
   //
   // destroy render pass
   //
-  vkDestroyRenderPass(dev->dev, rendp, NULL);
+  vkDestroyRenderPass(dev->dev, rendp->rendp, NULL);
   printf("render pass destroyed.\n");
 }

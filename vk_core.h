@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define GLFW_INCLUDE_VULKAN
@@ -7,7 +8,7 @@
 #include "vulkan/vulkan.h"
 
 struct PhyDevGroup {
-  VkPhysicalDevice *dev;
+  VkPhysicalDevice dev;
   VkPhysicalDeviceProperties prop;
   VkPhysicalDeviceMemoryProperties mem_prop;
   VkDeviceSize mem_total;
@@ -24,7 +25,8 @@ struct SurfaceGroup {
   GLFWwindow *window;
   VkSurfaceKHR surf;
   VkBool32 supported;
-  VkSurfaceFormatKHR form; // TODO: support multiple formats
+  VkSurfaceFormatKHR *forms;
+  VkSurfaceFormatKHR form_count;
   char mailbox_mode_supported;
 
   // NEED UPDATING ON RESIZE
@@ -64,8 +66,8 @@ struct RenderMgmtGroup {
 VkApplicationInfo create_app_info();
 VkInstance create_inst(VkApplicationInfo *app_info);
 struct PhyDevGroup get_phy_dev(VkInstance inst);
-struct DevGroup create_dev(VkPhysicalDevice *phy_dev);
-struct SurfaceGroup create_surf(VkInstance inst, VkPhysicalDevice *phy_dev,
+struct DevGroup create_dev(VkPhysicalDevice phy_dev);
+struct SurfaceGroup create_surf(VkInstance inst, VkPhysicalDevice phy_dev,
                                 size_t qf_best_idx, VkExtent2D dim);
 struct SwapchainGroup create_swap(VkDevice dev, VkSwapchainKHR old,
                                   VkSurfaceKHR surf,

@@ -29,12 +29,13 @@ VkApplicationInfo create_app_info() {
   strcpy_s(app_engine_name, sizeof(app_engine_name), "vulkan_engine");
   app_info.pEngineName = app_engine_name;
   app_info.engineVersion = VK_MAKE_VERSION(0, 0, 1);
-  app_info.apiVersion = VK_API_VERSION_1_0;
+  app_info.apiVersion = VK_API_VERSION_1_3;
 
   return app_info;
 }
 
 VkInstance create_inst(VkApplicationInfo *app_info) {
+  glfwInit();
   //
   // create instance create info
   //
@@ -66,6 +67,12 @@ VkInstance create_inst(VkApplicationInfo *app_info) {
   vkCreateInstance(&inst_info, NULL, &inst);
   printf("instance created.\n");
   return inst;
+}
+
+void check_phy_dev(VkPhysicalDevice phy_dev) {
+  VkPhysicalDeviceProperties props;
+  vkGetPhysicalDeviceProperties(phy_dev, &props);
+  printf("valid device with name: %s\n", props.deviceName);
 }
 
 struct PhyDevGroup get_phy_dev(VkInstance inst) {
@@ -139,30 +146,26 @@ struct PhyDevGroup get_phy_dev(VkInstance inst) {
     printf("unknown\n");
   }
   printf("memory total: %llu\n", phy_dev_mem_total[best_idx]);
-  return (struct PhyDevGroup){&(phy_devs[best_idx]), phy_dev_props[best_idx],
+
+  return (struct PhyDevGroup){phy_devs[best_idx], phy_dev_props[best_idx],
                               phy_dev_mem_props[best_idx],
                               phy_dev_mem_total[best_idx]};
 }
 
-void check_phy_dev(VkPhysicalDevice *phy_dev) {
-  VkPhysicalDeviceProperties props;
-  vkGetPhysicalDeviceProperties(*phy_dev, &props);
-  printf("valid device with name: %s\n", props);
-}
-
-struct DevGroup create_dev(VkPhysicalDevice *phy_dev) {
+struct DevGroup create_dev(VkPhysicalDevice phy_dev) {
   //
   // query queue families
   //
-  check_phy_dev(phy_dev);
   uint32_t qf_prop_count = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(*phy_dev, &qf_prop_count, NULL);
+  vkGetPhysicalDeviceQueueFamilyProperties(phy_dev, &qf_prop_count, NULL);
   VkQueueFamilyProperties qf_props[qf_prop_count];
-  vkGetPhysicalDeviceQueueFamilyProperties(*phy_dev, &qf_prop_count, qf_props);
+  vkGetPhysicalDeviceQueueFamilyProperties(phy_dev, &qf_prop_count, qf_props);
 
+  printf("found queue families:\n");
   uint32_t qf_q_count[qf_prop_count];
   for (uint32_t i = 0; i < qf_prop_count; i++) {
     qf_q_count[i] = qf_props[i].queueCount;
+    printf("  index: %x count: %x\n", i, qf_props[i].queueCount);
   }
 
   //
@@ -193,15 +196,19 @@ struct DevGroup create_dev(VkPhysicalDevice *phy_dev) {
   dev_info.enabledExtensionCount = ext_count;
   char pp_exts[ext_count][VK_MAX_EXTENSION_NAME_SIZE];
   strcpy_s(pp_exts[0], sizeof(pp_exts[0]), "VK_KHR_swapchain");
+  printf("using extensions:\n");
   char *pp_ext_names[ext_count];
   for (uint32_t i = 0; i < ext_count; i++) {
     pp_ext_names[i] = pp_exts[i];
+    printf("  %s\n", pp_ext_names[i]);
   }
   dev_info.ppEnabledExtensionNames = (const char *const *)pp_ext_names;
-  printf("got required device extensions.\n");
+  VkPhysicalDeviceFeatures phy_dev_feat;
+  vkGetPhysicalDeviceFeatures(phy_dev, &phy_dev_feat);
+  dev_info.pEnabledFeatures = &phy_dev_feat;
 
   VkDevice dev;
-  vkCreateDevice(*phy_dev, &dev_info, NULL, &dev);
+  vkCreateDevice(phy_dev, &dev_info, NULL, &dev);
   printf("logical device created.\n");
   //
   // select best queue
@@ -222,7 +229,7 @@ struct DevGroup create_dev(VkPhysicalDevice *phy_dev) {
       qf_best_idx = qf_graph_list[i];
     }
   }
-  printf("best queue family index:%d\n", qf_best_idx);
+  printf("best queue family index: %d\n", qf_best_idx);
 
   VkQueue q_graph, q_pres;
   vkGetDeviceQueue(dev, qf_best_idx, 0, &q_graph);
@@ -243,12 +250,11 @@ static void cursor_position_callback(GLFWwindow *window, double x, double y) {
   printf("cursor position xpos:%f ypos:%f\n", x, y);
 }
 
-struct SurfaceGroup create_surf(VkInstance inst, VkPhysicalDevice *phy_dev,
+struct SurfaceGroup create_surf(VkInstance inst, VkPhysicalDevice phy_dev,
                                 size_t qf_best_idx, VkExtent2D dim) {
   //
   // create window and surface
   //
-  glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE,
                  GLFW_FALSE); // TODO: support dynamic window size
@@ -263,7 +269,7 @@ struct SurfaceGroup create_surf(VkInstance inst, VkPhysicalDevice *phy_dev,
   // verify surface support
   //
   VkBool32 supported;
-  vkGetPhysicalDeviceSurfaceSupportKHR(*phy_dev, qf_best_idx, surf, &supported);
+  vkGetPhysicalDeviceSurfaceSupportKHR(phy_dev, qf_best_idx, surf, &supported);
   if (supported == VK_TRUE) {
     printf("surface supported.\n");
   } else {
@@ -273,7 +279,7 @@ struct SurfaceGroup create_surf(VkInstance inst, VkPhysicalDevice *phy_dev,
   // fetch surface capabilities
   //
   VkSurfaceCapabilitiesKHR caps;
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(*phy_dev, surf, &caps);
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phy_dev, surf, &caps);
   printf("fetched caps from surface.\n");
   char extent_suitable = 1;
   int wind_w, wind_h;
@@ -295,48 +301,47 @@ struct SurfaceGroup create_surf(VkInstance inst, VkPhysicalDevice *phy_dev,
     actual_extent.height = wind_h < caps.minImageExtent.height
                                ? caps.minImageExtent.height
                                : wind_h;
-    //
-    // fetch surface formats
-    //
-    uint32_t form_count;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(*phy_dev, surf, &form_count, NULL);
-    VkSurfaceFormatKHR forms[form_count];
-    vkGetPhysicalDeviceSurfaceFormatsKHR(*phy_dev, surf, &form_count, forms);
-    printf("fetched %d surface formats.\n", form_count);
-    for (uint32_t i = 0; i < form_count; i++) {
-      printf("format:%d\tcolorspace:%d\n", forms[i].format,
-             forms[i].colorSpace);
-    }
-    //
-    // fetch surface present mode
-    // TODO: add dynamic present mode support
-    //
-    uint32_t pres_mode_count;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(*phy_dev, surf, &pres_mode_count,
-                                              NULL);
-    VkPresentModeKHR pres_modes[pres_mode_count];
-    vkGetPhysicalDeviceSurfacePresentModesKHR(*phy_dev, surf, &pres_mode_count,
-                                              pres_modes);
-    printf("fetched %d present modes.\n", pres_mode_count);
-    char mailbox_mode_supported = 0;
-    for (uint32_t i = 0; i < pres_mode_count; i++) {
-      printf("present mode:%d\n", pres_modes[i]);
-      if (pres_modes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
-        printf("mailbox present mode supported.\n");
-        mailbox_mode_supported = 1;
-      }
-    }
-
-    return (struct SurfaceGroup){window,
-                                 surf,
-                                 supported,
-                                 forms[0],
-                                 mailbox_mode_supported,
-                                 caps,
-                                 extent_suitable,
-                                 actual_extent};
   }
-  return (struct SurfaceGroup){window, surf, supported, 0, 0, 0, 0, 0};
+  //
+  // fetch surface formats
+  //
+  uint32_t form_count;
+  vkGetPhysicalDeviceSurfaceFormatsKHR(phy_dev, surf, &form_count, NULL);
+  VkSurfaceFormatKHR *forms = malloc(form_count * sizeof(VkSurfaceFormatKHR));
+  vkGetPhysicalDeviceSurfaceFormatsKHR(phy_dev, surf, &form_count, forms);
+  printf("fetched %d surface formats.\n", form_count);
+  for (uint32_t i = 0; i < form_count; i++) {
+    printf("format: %d\tcolorspace: %d\n", forms[i].format, forms[i].colorSpace);
+  }
+  //
+  // fetch surface present mode
+  // TODO: add dynamic present mode support
+  //
+  uint32_t pres_mode_count;
+  vkGetPhysicalDeviceSurfacePresentModesKHR(phy_dev, surf, &pres_mode_count,
+                                            NULL);
+  VkPresentModeKHR pres_modes[pres_mode_count];
+  vkGetPhysicalDeviceSurfacePresentModesKHR(phy_dev, surf, &pres_mode_count,
+                                            pres_modes);
+  printf("fetched %d present modes.\n", pres_mode_count);
+  char mailbox_mode_supported = 0;
+  for (uint32_t i = 0; i < pres_mode_count; i++) {
+    printf("present mode: %d\n", pres_modes[i]);
+    if (pres_modes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+      printf("mailbox present mode supported.\n");
+      mailbox_mode_supported = 1;
+    }
+  }
+
+  return (struct SurfaceGroup){.window = window,
+                               .surf = surf,
+                               .supported = supported,
+                               .forms = forms,
+                               .form_count = form_count,
+                               .mailbox_mode_supported = mailbox_mode_supported,
+                               .caps = caps,
+                               .extent_suitable = extent_suitable,
+                               .actual_extent = actual_extent};
 }
 
 struct SwapchainGroup create_swap(VkDevice dev, VkSwapchainKHR old,
@@ -379,13 +384,13 @@ struct SwapchainGroup create_swap(VkDevice dev, VkSwapchainKHR old,
   //
   uint32_t img_count = 0;
   vkGetSwapchainImagesKHR(dev, swap, &img_count, NULL);
-  VkImage imgs[img_count];
+  VkImage *imgs = malloc(img_count * sizeof(VkImage));
   vkGetSwapchainImagesKHR(dev, swap, &img_count, imgs);
   printf("%d images fetched from swapchain.\n", img_count);
   //
   // create image view
   //
-  VkImageView img_views[img_count];
+  VkImageView *img_views = malloc(img_count * sizeof(VkImageView));
   VkImageViewCreateInfo img_view_infos[img_count];
 
   VkImageSubresourceRange subres;
@@ -405,8 +410,8 @@ struct SwapchainGroup create_swap(VkDevice dev, VkSwapchainKHR old,
     printf("image view %d created.\n", i);
   }
 
-  return (struct SwapchainGroup){swap, swap_info.imageExtent, img_count,
-                                 imgs[0], img_views[0]};
+  return (struct SwapchainGroup){swap, swap_info.imageExtent, img_count, imgs,
+                                 img_views};
 }
 
 struct RenderMgmtGroup create_rend_mgmt(VkDevice dev, uint32_t qf_best_idx,
@@ -436,14 +441,14 @@ struct RenderMgmtGroup create_rend_mgmt(VkDevice dev, uint32_t qf_best_idx,
   cmd_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   cmd_alloc_info.commandBufferCount = img_count;
 
-  VkCommandBuffer cmd_buffs[img_count];
+  VkCommandBuffer *cmd_buffs = malloc(img_count * sizeof(VkCommandBuffer));
   vkAllocateCommandBuffers(dev, &cmd_alloc_info, cmd_buffs);
   printf("command buffers allocated.\n");
   //
   // render preparation
   //
-  VkCommandBufferBeginInfo cmd_begin_infos[img_count];
-  VkRenderPassBeginInfo rendp_begin_infos[img_count];
+  VkCommandBufferBeginInfo *cmd_begin_infos = malloc(img_count * sizeof(VkCommandBufferBeginInfo));
+  VkRenderPassBeginInfo *rendp_begin_infos = malloc(img_count * sizeof(VkRenderPassBeginInfo));
   VkRect2D rendp_area;
   rendp_area.offset.x = 0;
   rendp_area.offset.y = 0;
@@ -486,9 +491,9 @@ struct RenderMgmtGroup create_rend_mgmt(VkDevice dev, uint32_t qf_best_idx,
   //
   // THESE ARE MAX FRAMES IN FLIGHT
   uint32_t max_frames = 2;
-  VkSemaphore img_avl_semps[max_frames];
-  VkSemaphore rend_fin_semps[max_frames];
-  VkFence fens[max_frames];
+  VkSemaphore *img_avl_semps = malloc(max_frames * sizeof(VkSemaphore));
+  VkSemaphore *rend_fin_semps = malloc(max_frames * sizeof(VkSemaphore));
+  VkFence *fens = malloc(max_frames * sizeof(VkFence));
 
   VkSemaphoreCreateInfo semp_info;
   semp_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -508,14 +513,14 @@ struct RenderMgmtGroup create_rend_mgmt(VkDevice dev, uint32_t qf_best_idx,
   printf("semaphores and fences created.\n");
 
   uint32_t cur_frame = 0;
-  VkFence img_fens[img_count];
+  VkFence *img_fens = malloc(max_frames * sizeof(VkFence));
   for (uint32_t i = 0; i < img_count; i++) {
     img_fens[i] = VK_NULL_HANDLE;
   }
 
-  return (struct RenderMgmtGroup){
-      cmd_pool,         cmd_buffs[0],      img_fens[0], img_count, max_frames,
-      img_avl_semps[0], rend_fin_semps[0], fens[0],     cur_frame};
+  return (struct RenderMgmtGroup){cmd_pool,       cmd_buffs,  img_fens,
+                                  img_count,      max_frames, img_avl_semps,
+                                  rend_fin_semps, fens,       cur_frame};
 }
 
 void destroy_vk_core(VkInstance inst, struct DevGroup *dev,
