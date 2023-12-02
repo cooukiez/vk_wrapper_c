@@ -18,11 +18,11 @@ int main(int argc, char **argv) {
   struct SurfaceGroup surf =
       create_surf(inst, phy_dev.dev, dev.qf_best_idx, (VkExtent2D){1920, 1080});
   struct SwapchainGroup swap =
-      create_swap(dev.dev, VK_NULL_HANDLE, surf.surf, surf.caps, surf.form,
+      create_swap(dev.dev, VK_NULL_HANDLE, surf.surf, surf.caps, surf.forms[0],
                   surf.extent_suitable, surf.actual_extent, dev.single_queue,
                   surf.mailbox_mode_supported);
 
-  struct RenderPassGroup rendp = create_rendp(dev.dev, surf.form);
+  struct RenderPassGroup rendp = create_rendp(dev.dev, surf.forms[0]);
   create_frame_buffs(&rendp, dev.dev, swap.img_count, swap.img_views, swap.extent);
   struct PipeGroup pipe = create_pipe(dev.dev, swap.extent, rendp.rendp);
   struct RenderMgmtGroup rend_mgmt =
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
 
   init_buffer(dev.dev, &vert_buf);
-  allocate_memory(dev.dev, *phy_dev.dev, &vert_buf);
+  allocate_memory(dev.dev, phy_dev.dev, &vert_buf);
   init_vert_mem(dev.dev, &vert_buf, &vertices[0]);
 
   /*
