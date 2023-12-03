@@ -13,6 +13,7 @@ add_executable(v_net
 	main.c
 	vk_core.c
 	render.c
+	descriptor.c
 	buffer.c)
 
 if(UNIX AND NOT APPLE)
