@@ -21,7 +21,7 @@ struct BufferSet create_buffer_info(size_t size, uint32_t alignment,
   return (struct BufferSet){size, alignment, usage, sharing, 0, NULL, 0, 0, 0};
 }
 
-void init_buffer(VkDevice dev, struct BufferSet *buf) {
+void init_buffer(struct BufferSet *buf, VkDevice dev) {
   buf->buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   buf->buf_info.size = buf->size;
   buf->buf_info.usage = buf->usage;
@@ -31,8 +31,8 @@ void init_buffer(VkDevice dev, struct BufferSet *buf) {
   vkCreateBuffer(dev, &buf->buf_info, NULL, &buf->buf);
 };
 
-void allocate_memory(VkDevice dev, VkPhysicalDevice phy_dev,
-                     struct BufferSet *buf) {
+void allocate_memory(struct BufferSet *buf, VkDevice dev,
+                     VkPhysicalDevice phy_dev) {
   vkGetBufferMemoryRequirements(dev, buf->buf, &buf->mem_req);
 
   buf->mem_type = find_mem_type(buf->mem_req.memoryTypeBits,
@@ -52,7 +52,7 @@ void allocate_memory(VkDevice dev, VkPhysicalDevice phy_dev,
   vkBindBufferMemory(dev, buf->buf, buf->mem, 0);
 }
 
-void init_vert_mem(VkDevice dev, struct BufferSet *buf,
+void init_vert_mem(struct BufferSet *buf, VkDevice dev,
                    struct Vertex *vertices) {
   void *empty_data;
   vkMapMemory(dev, buf->mem, 0, buf->buf_info.size, 0, &empty_data);
