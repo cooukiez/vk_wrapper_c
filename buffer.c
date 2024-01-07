@@ -21,7 +21,7 @@ struct BufferSet create_buffer_info(size_t size, uint32_t alignment,
   return (struct BufferSet){size, alignment, usage, sharing, 0, NULL, 0, 0, 0};
 }
 
-void init_buffer(struct BufferSet *buf, VkDevice dev) {
+void init_buffer(VkDevice dev, struct BufferSet *buf) {
   buf->buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   buf->buf_info.size = buf->size;
   buf->buf_info.usage = buf->usage;

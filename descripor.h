@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "vulkan/vulkan.h"
@@ -11,7 +12,9 @@ struct DescriptorGroup {
   VkDescriptorSet *sets;
 };
 
-#ifndef BUFFER_H
-#define BUFFER_H
+#ifndef DESC_H
+#define DESC_H
+
+
 
 #endif
