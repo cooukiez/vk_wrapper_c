@@ -56,6 +56,28 @@ void init_desc_pool(struct DescriptorGroup *g_desc, VkDevice dev,
   alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   alloc_info.descriptorPool = pool;
   alloc_info.descriptorSetCount = g_desc->set_count;
-  alloc_info.pSetLayouts = g_desc->sets;
-  
+  alloc_info.pSetLayouts = g_desc->layouts;
+
+  g_desc->sets = malloc(sizeof(VkDescriptorSet) * g_desc->set_count);
+  vkAllocateDescriptorSets(dev, &alloc_info, &g_desc->set_count);
+}
+
+void write_buffer_desc(struct DescriptorGroup *g_desc, VkDevice dev,
+                       struct BufferGroup *g_buf, uint32_t set,
+                       uint32_t binding, VkDescriptorType desc_type) {
+  VkDescriptorBufferInfo desc_buf_info;
+  desc_buf_info.buffer = buf;
+  desc_buf_info.offset = 0;
+  desc_buf_info.range = g_buf.size;
+
+  VkWriteDescriptorSet desc_write;
+  desc_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  desc_write.dstSet = g_desc->sets[set];
+  desc_write.dstBinding = binding;
+  desc_write.dstArrayElement = 0;
+  desc_write.descriptorType = desc_type;
+  desc_write.descriptorCount = 1;
+  desc_write.pBufferInfo = &desc_buf_info;
+
+  vkUpdateDescriptorSets(dev, 1, &desc_write, 0, NULL);
 }
