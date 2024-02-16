@@ -63,12 +63,12 @@ void init_desc_pool(struct DescriptorGroup *g_desc, VkDevice dev,
 }
 
 void write_buffer_desc(struct DescriptorGroup *g_desc, VkDevice dev,
-                       struct BufferGroup *g_buf, uint32_t set,
-                       uint32_t binding, VkDescriptorType desc_type) {
+                       struct BufferSet *g_buf, uint32_t set, uint32_t binding,
+                       VkDescriptorType desc_type) {
   VkDescriptorBufferInfo desc_buf_info;
-  desc_buf_info.buffer = buf;
+  desc_buf_info.buffer = g_buf->buf;
   desc_buf_info.offset = 0;
-  desc_buf_info.range = g_buf.size;
+  desc_buf_info.range = g_buf->size;
 
   VkWriteDescriptorSet desc_write;
   desc_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

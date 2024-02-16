@@ -4,6 +4,8 @@
 
 #include "vulkan/vulkan.h"
 
+#include "buffer.h"
+
 struct DescriptorGroup {
   VkDescriptorSetLayout *layouts;
   uint32_t set_count;
@@ -14,7 +16,5 @@ struct DescriptorGroup {
 
 #ifndef DESC_H
 #define DESC_H
-
-
 
 #endif
