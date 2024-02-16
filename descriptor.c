@@ -59,7 +59,7 @@ void init_desc_pool(struct DescriptorGroup *g_desc, VkDevice dev,
   alloc_info.pSetLayouts = g_desc->layouts;
 
   g_desc->sets = malloc(sizeof(VkDescriptorSet) * g_desc->set_count);
-  vkAllocateDescriptorSets(dev, &alloc_info, &g_desc->set_count);
+  vkAllocateDescriptorSets(dev, &alloc_info, g_desc->sets);
 }
 
 void write_buffer_desc(struct DescriptorGroup *g_desc, VkDevice dev,

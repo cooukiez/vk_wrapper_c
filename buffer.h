@@ -32,7 +32,7 @@ void init_buffer(VkDevice dev, struct BufferSet *buf);
 
 void allocate_memory(VkDevice dev, VkPhysicalDevice phy_dev,
                      struct BufferSet *buf);
-void init_vert_mem(VkDevice dev, struct BufferSet *buf,
-                   struct Vertex *vertices);
+void init_mem(VkDevice dev, struct BufferSet *buf,
+                   void *data);
 
 #endif

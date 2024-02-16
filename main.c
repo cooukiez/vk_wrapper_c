@@ -21,12 +21,12 @@ int main(int argc, char **argv) {
                   surf.mailbox_mode_supported);
 
   struct RenderPassGroup rendp = create_rendp(dev.dev, surf.forms[0]);
-  create_frame_buffs(&rendp, dev.dev, swap.img_count, swap.img_views, swap.extent);
+  create_frame_buffs(&rendp, dev.dev, swap.img_count, swap.img_views,
+                     swap.extent);
   struct PipeGroup pipe = create_pipe(dev.dev, swap.extent, rendp.rendp);
   struct RenderMgmtGroup rend_mgmt =
       create_rend_mgmt(dev.dev, dev.qf_best_idx, swap.img_count, swap.extent,
                        rendp.rendp, rendp.frame_buffs, pipe.pipe);
-  //   struct
 
   //
   //
@@ -34,8 +34,15 @@ int main(int argc, char **argv) {
   //
   // create index buffer
   //
-  // VkBuffer idx_buf;
-  // VkDeviceMemory idx_buf_mem;
+  uint32_t indices[] = {0, 1, 2, 0, 3, 1};
+  struct BufferSet index_buf = create_buffer_info(
+      sizeof(indices), sizeof(uint32_t), VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      VK_SHARING_MODE_EXCLUSIVE);
+
+  init_buffer(dev.dev, &index_buf);
+  allocate_memory(dev.dev, phy_dev.dev, &index_buf);
+  init_mem(dev.dev, &index_buf, &indices[0]);
+
   printf("index buffer created.\n");
   //
   // create vertex buffer
@@ -50,37 +57,23 @@ int main(int argc, char **argv) {
 
   init_buffer(dev.dev, &vert_buf);
   allocate_memory(dev.dev, phy_dev.dev, &vert_buf);
-  init_vert_mem(dev.dev, &vert_buf, &vertices[0]);
+  init_mem(dev.dev, &vert_buf, &vertices[0]);
 
-  /*
-  VkBuffer vert_buf;
-  VkBufferCreateInfo vert_buf_info;
-  vert_buf_info.sType=
-          VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  vert_buf_info.size=sizeof(vertices);
-  vert_buf_info.usage=
-          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-  vert_buf_info.sharingMode=
-          VK_SHARING_MODE_EXCLUSIVE;
-  vert_buf_info.pNext=
-          NULL;
-  vkCreateBuffer(dev,&vert_buf_info,NULL,&vert_buf);
   printf("vertex buffer created.\n");
-  VkMemoryRequirements vert_mem_req;
-  vkGetBufferMemoryRequirements(dev,vert_buf,&vert_mem_req);
-  VkMemoryAllocateInfo vert_alloc_info;
-  vert_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  vert_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  vert_alloc_info.allocationSize = vert_mem_req.size;
-  printf("found vertex memory type
-  index:%d\n",find_mem_type(vert_mem_req.memoryTypeBits,
-                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                  phy_best_devi));
-  vert_alloc_info.memoryTypeIndex =
-          find_mem_type(vert_mem_req.memoryTypeBits,
-                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                  phy_best_devi);
+  //
+  // create uniform buffer
+  //
+  struct UniformSet uniform[] = {{0, 0, 0}};
+  struct BufferSet uniform_buf = create_buffer_info(
+      sizeof(uniform), sizeof(struct UniformSet),
+      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
 
+  init_buffer(dev.dev, &uniform_buf);
+  allocate_memory(dev.dev, phy_dev.dev, &uniform_buf);
+  init_mem(dev.dev, &uniform_buf, &uniform[0]);
+  
+  printf("uniform buffer created.\n");
+  /*
   //
   //create vertex input binding description
   //
@@ -146,8 +139,8 @@ int main(int argc, char **argv) {
   }
   vkDeviceWaitIdle(dev.dev);
   printf("command buffers finished.\n");
-  destroy_render(&dev,&pipe,&rendp);
-  destroy_vk_core(inst,&dev,&swap,&surf,&rend_mgmt);
+  destroy_render(&dev, &pipe, &rendp);
+  destroy_vk_core(inst, &dev, &swap, &surf, &rend_mgmt);
 
   return 0;
 }

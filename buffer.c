@@ -40,7 +40,7 @@ void allocate_memory(VkDevice dev, VkPhysicalDevice phy_dev,
                                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                                 phy_dev);
 
-  printf("found vertex memory type index:%x\n", buf->mem_type);
+  printf("found memory type index: %x\n", buf->mem_type);
 
   VkMemoryAllocateInfo alloc_info;
   alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -52,10 +52,10 @@ void allocate_memory(VkDevice dev, VkPhysicalDevice phy_dev,
   vkBindBufferMemory(dev, buf->buf, buf->mem, 0);
 }
 
-void init_vert_mem(VkDevice dev, struct BufferSet *buf,
-                   struct Vertex *vertices) {
+void init_mem(VkDevice dev, struct BufferSet *buf,
+                   void *data) {
   void *empty_data;
   vkMapMemory(dev, buf->mem, 0, buf->buf_info.size, 0, &empty_data);
-  memcpy(empty_data, vertices, buf->size);
+  memcpy(empty_data, data, buf->size);
   vkUnmapMemory(dev, buf->mem);
 }
