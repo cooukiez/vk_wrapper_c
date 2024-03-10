@@ -1,15 +1,13 @@
 #include "descripor.h"
 
-struct DescriptorGroup default_desc_group() {
-  return (struct DescriptorGroup){0, 0, 0, 0};
-}
-
 void add_desc_set_layout(struct DescriptorGroup *g_desc, VkDevice dev,
                          VkDescriptorType type, VkShaderStageFlags stage,
                          uint32_t binding_count) {
   //
   // create descriptor set bindings
   //
+  VkDescriptorSetLayoutBindingFlagsCreateInfo info;
+  
   VkDescriptorSetLayoutBinding set_bindings[binding_count];
   for (uint32_t i = 0; i < binding_count; i++) {
     set_bindings[i].binding = i;
@@ -18,6 +16,7 @@ void add_desc_set_layout(struct DescriptorGroup *g_desc, VkDevice dev,
     set_bindings[i].pImmutableSamplers = NULL;
     set_bindings[i].stageFlags = stage;
   }
+  printf("created descriptor bindings.\n");
   //
   // create descriptor set layout
   //
@@ -25,6 +24,8 @@ void add_desc_set_layout(struct DescriptorGroup *g_desc, VkDevice dev,
   set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   set_layout_info.bindingCount = binding_count;
   set_layout_info.pBindings = set_bindings;
+  set_layout_info.pNext = NULL;
+  set_layout_info.flags = 0;
 
   VkDescriptorSetLayout set_layout;
   vkCreateDescriptorSetLayout(dev, &set_layout_info, NULL, &set_layout);
@@ -42,6 +43,7 @@ void init_desc_pool(struct DescriptorGroup *g_desc, VkDevice dev,
   // create descriptor pool
   //
   VkDescriptorPoolCreateInfo pool_info;
+  pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   pool_info.poolSizeCount = size_count;
   pool_info.pPoolSizes = sizes;
   pool_info.maxSets = g_desc->set_count;

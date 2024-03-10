@@ -71,8 +71,27 @@ int main(int argc, char **argv) {
   init_buffer(dev.dev, &uniform_buf);
   allocate_memory(dev.dev, phy_dev.dev, &uniform_buf);
   init_mem(dev.dev, &uniform_buf, &uniform[0]);
-  
+
   printf("uniform buffer created.\n");
+  //
+  //
+  // descriptor creation part
+  //
+  // create descriptor pool
+  //
+  struct DescriptorGroup desc_group;
+  add_desc_set_layout(&desc_group, dev.dev, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                      VK_SHADER_STAGE_ALL, 1);
+  VkDescriptorPoolSize unif_pool_size;
+  unif_pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  unif_pool_size.descriptorCount =
+      1; // number of individual descriptors of that type
+  VkDescriptorPoolSize pool_sizes[] = {unif_pool_size};
+  init_desc_pool(&desc_group, dev.dev, &pool_sizes[0], 1);
+  //
+  // write uniform descriptor
+  //
+  write_buffer_desc(&desc_group, dev.dev, &uniform_buf, 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
   /*
   //
   //create vertex input binding description

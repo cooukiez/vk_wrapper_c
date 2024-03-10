@@ -17,4 +17,13 @@ struct DescriptorGroup {
 #ifndef DESC_H
 #define DESC_H
 
+void add_desc_set_layout(struct DescriptorGroup *g_desc, VkDevice dev,
+                         VkDescriptorType type, VkShaderStageFlags stage,
+                         uint32_t binding_count);
+void init_desc_pool(struct DescriptorGroup *g_desc, VkDevice dev,
+                    VkDescriptorPoolSize *sizes, uint32_t size_count);
+void write_buffer_desc(struct DescriptorGroup *g_desc, VkDevice dev,
+                       struct BufferSet *g_buf, uint32_t set, uint32_t binding,
+                       VkDescriptorType desc_type);
+
 #endif

@@ -3,6 +3,7 @@
 #include "vulkan/vulkan.h"
 
 #include "buffer.h"
+#include "descripor.h"
 #include "vk_core.h"
 
 struct Vertex {
