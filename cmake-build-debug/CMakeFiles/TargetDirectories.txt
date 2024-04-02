@@ -1,0 +1,6 @@
+C:/Users/Ludw/Documents/_code/vk_c_wrapper/cmake-build-debug/CMakeFiles/v_net.dir
+C:/Users/Ludw/Documents/_code/vk_c_wrapper/cmake-build-debug/CMakeFiles/vert.spv.dir
+C:/Users/Ludw/Documents/_code/vk_c_wrapper/cmake-build-debug/CMakeFiles/frag.spv.dir
+C:/Users/Ludw/Documents/_code/vk_c_wrapper/cmake-build-debug/CMakeFiles/glfw3.dll.dir
+C:/Users/Ludw/Documents/_code/vk_c_wrapper/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/Ludw/Documents/_code/vk_c_wrapper/cmake-build-debug/CMakeFiles/rebuild_cache.dir
