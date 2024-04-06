@@ -1,3 +1,3 @@
 cd .\build
-.\v_net.exe
+.\vk_wrapper.exe
 cd ..

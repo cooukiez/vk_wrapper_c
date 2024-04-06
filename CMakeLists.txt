@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(vulkan)
+project(vulkan C)
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -9,7 +9,7 @@ file(TO_CMAKE_PATH $ENV{GLFW_64} GLFW_DIR)
 file(TO_CMAKE_PATH $ENV{VULKAN_SDK} VULKAN_DIR)
 file(TO_CMAKE_PATH $ENV{GLM_C} GLM_DIR)
 
-add_executable(v_net
+add_executable(vk_wrapper
 	main.c
 	vk_core.c
 	render.c
@@ -27,7 +27,7 @@ if(UNIX AND NOT APPLE)
 
 		based on your build directories
 	]]
-	target_link_libraries(v_net
+	target_link_libraries(vk_wrapper
 		/usr/lib/libvulkan.so
 		/usr/lib/libglfw.so)
 elseif(WIN32)
@@ -46,17 +46,17 @@ elseif(WIN32)
 
 		based on your install directories
 	]]
-	target_include_directories(v_net PRIVATE
+	target_include_directories(vk_wrapper PRIVATE
 		${VULKAN_DIR}/Include
 		${GLFW_DIR}/include
 		${GLM_DIR}/include/
 		${CMAKE_SOURCE_DIR})
 
-	target_link_libraries(v_net
+	target_link_libraries(vk_wrapper
 		${VULKAN_DIR}/Lib/vulkan-1.lib
 		${GLFW_DIR}/lib-mingw-w64/libglfw3dll.a)
 
-	target_link_options(v_net PRIVATE
+	target_link_options(vk_wrapper PRIVATE
 		-mwindows)
 endif()
 
@@ -67,7 +67,7 @@ add_custom_target(frag.spv
 	COMMAND glslangValidator --quiet -V ${CMAKE_SOURCE_DIR}/shader.frag -o ${CMAKE_BINARY_DIR}/frag.spv)
 
 if(UNIX AND NOT APPLE)
-	add_dependencies(v_net
+	add_dependencies(vk_wrapper
 		vert.spv
 		frag.spv)
 elseif(WIN32)
@@ -78,7 +78,7 @@ elseif(WIN32)
 	add_custom_target(glfw3.dll
 		COMMAND ${CMAKE_COMMAND} -E copy ${GLFW_DIR}/lib-mingw-w64/glfw3.dll ${CMAKE_BINARY_DIR}/)
 
-	add_dependencies(v_net
+	add_dependencies(vk_wrapper
 		vert.spv
 		frag.spv
 		glfw3.dll)
