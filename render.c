@@ -614,7 +614,7 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         printf("swapchain out of date at queue submit. \n");
-        recreate_swap(vcw_core, vcw_pipe_group);
+        //recreate_swap(vcw_core, vcw_pipe_group);
         return 2;
     } else if (result != VK_SUCCESS) {
         printf("failed to present.\n");
@@ -652,7 +652,7 @@ VCW_RenderResult new_render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe
     clock_t end = clock();
     double elapsed_time = (end - start) / (double) CLOCKS_PER_SEC;
 
-    //printf("waiting for fences time: %f\n", elapsed_time);
+    printf("waiting for fences time: %f\n", elapsed_time);
 
     uint32_t img_index = 0;
     start = clock();
@@ -660,7 +660,7 @@ VCW_RenderResult new_render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe
     end = clock();
     elapsed_time = (end - start) / (double) CLOCKS_PER_SEC;
 
-    //printf("acquire next image time: %f\n", elapsed_time);
+        printf("acquire next image time: %f\n", elapsed_time);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         vcw_surf->resized = 0;
