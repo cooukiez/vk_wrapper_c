@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 
     VCW_VkCoreGroup vcw_core = {phy_dev, dev, surf, swap};
 
-    VCW_CommandPool cmd_pool = create_cmd_pool(*dev, 2);
+    VCW_CommandPool cmd_pool = create_cmd_pool(*dev, *swap);
     VCW_Renderpass rendp = create_rendp(*dev, *surf);
     create_frame_bufs(*dev, *swap, &rendp, swap->extent);
 
@@ -94,11 +94,16 @@ int main(int argc, char **argv) {
     VCW_PipelineGroup vcw_pipe_group = {&cmd_pool, &rendp, &pipe, &desc_group, &sync, &vert_buf, &index_buf};
 
     printf("\n");
+    prepare_rendering(vcw_core, vcw_pipe_group);
     while (!glfwWindowShouldClose(surf->window)) {
         glfwPollEvents();
         if (surf->resized == 1) {
             surf->resized = 0;
             clock_t start = clock();
+            for (uint32_t i = 0; i < sync.max_frames; i++) {
+                vkWaitForFences(dev->dev, 1, &sync.fens[i], VK_TRUE, UINT64_MAX);
+                vkResetFences(dev->dev, 1, &sync.fens[i]);
+            }
             recreate_swap(vcw_core, vcw_pipe_group);
             clock_t end = clock();
             double elapsed = (double) (end - start) / CLOCKS_PER_SEC;
@@ -111,8 +116,9 @@ int main(int argc, char **argv) {
     }
     vkDeviceWaitIdle(dev->dev);
     printf("command buffers finished.\n");
-    //destroy_render(&dev, &pipe, &rendp);
-    //destroy_vk_core(inst, &dev, &swap, &surf, &rend_mgmt);
+
+    destroy_render(*dev, pipe, rendp, sync);
+    destroy_vk_core(inst, *dev, *swap,*surf, cmd_pool);
 
     return 0;
 }

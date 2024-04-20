@@ -369,6 +369,7 @@ void create_frame_bufs(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, VCW_Renderpas
 
 VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, uint32_t max_frames_in_flight) {
     VCW_Sync vcw_sync;
+    vcw_sync.img_count = vcw_swap.img_count;
     vcw_sync.cur_frame = 0;
     // THESE ARE MAX FRAMES IN FLIGHT
     vcw_sync.max_frames = max_frames_in_flight;
@@ -396,83 +397,97 @@ VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, uint32_t max_fr
     }
     printf("semaphores and fences created.\n");
 
+    vcw_sync.cur_frame = 0;
+    vcw_sync.img_fens = malloc(vcw_sync.img_count * sizeof(VkFence));
+    for (uint32_t i = 0; i < vcw_sync.img_count; i++) {
+        vcw_sync.img_fens[i] = VK_NULL_HANDLE;
+    }
+
     return vcw_sync;
 }
 
-//test
-
-void record_cmd_buf(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group, VkCommandBuffer cmd_buf,
-                    uint32_t img_index) {
+void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
     //
-    // unpack arguments
+    // unpack group arguments
     //
+    VCW_Device vcw_dev = *vcw_core.dev;
     VCW_Swapchain vcw_swap = *vcw_core.swap;
+    VCW_CommandPool vcw_cmd = *vcw_pipe_group.cmd;
     VCW_Renderpass vcw_rendp = *vcw_pipe_group.rendp;
     VCW_Pipeline vcw_pipe = *vcw_pipe_group.pipe;
     VCW_DescriptorPool vcw_desc = *vcw_pipe_group.desc;
     VCW_Buffer vert_buf = *vcw_pipe_group.vert_buf;
     VCW_Buffer index_buf = *vcw_pipe_group.index_buf;
     //
-    // record command buffer
+    // render preparation
     //
-    // begin command buffer
-    //
-    VkCommandBufferBeginInfo cmd_begin_info;
-    cmd_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    cmd_begin_info.pNext = NULL;
-    cmd_begin_info.flags = 0;
-    cmd_begin_info.pInheritanceInfo = NULL;
-    vkBeginCommandBuffer(cmd_buf, &cmd_begin_info);
-    //
-    // begin renderpass
-    //
+    VkCommandBufferBeginInfo *cmd_begin_infos = malloc(vcw_swap.img_count * sizeof(VkCommandBufferBeginInfo));
+    VkRenderPassBeginInfo *rendp_begin_infos = malloc(vcw_swap.img_count * sizeof(VkRenderPassBeginInfo));
     VkRect2D rendp_area;
     rendp_area.offset.x = 0;
     rendp_area.offset.y = 0;
     rendp_area.extent = vcw_swap.extent;
     VkClearValue clear_val = {0.5f, 0.0f, 0.5f, 0.0f};
+    for (uint32_t i = 0; i < vcw_cmd.cmd_buf_count; i++) {
+        //
+        // Begin command buffer
+        //
+        cmd_begin_infos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        cmd_begin_infos[i].pNext = NULL;
+        cmd_begin_infos[i].flags = 0;
+        cmd_begin_infos[i].pInheritanceInfo = NULL;
+        printf("command buffer begin info %d filled.\n", i);
+        //
+        // Begin renderpass
+        //
+        rendp_begin_infos[i].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rendp_begin_infos[i].pNext = NULL;
+        rendp_begin_infos[i].renderPass = vcw_rendp.rendp;
+        rendp_begin_infos[i].framebuffer = vcw_rendp.frame_bufs[i];
+        rendp_begin_infos[i].renderArea = rendp_area;
+        rendp_begin_infos[i].clearValueCount = 1;
+        rendp_begin_infos[i].pClearValues = &clear_val;
+        printf("render pass begin info %d filled.\n", i);
 
-    VkRenderPassBeginInfo rendp_begin_info;
-    rendp_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rendp_begin_info.pNext = NULL;
-    rendp_begin_info.renderPass = vcw_rendp.rendp;
-    rendp_begin_info.framebuffer = vcw_rendp.frame_bufs[img_index];
-    rendp_begin_info.renderArea = rendp_area;
-    rendp_begin_info.clearValueCount = 1;
-    rendp_begin_info.pClearValues = &clear_val;
+        vkBeginCommandBuffer(vcw_cmd.cmd_bufs[i], &cmd_begin_infos[i]);
+        vkCmdBeginRenderPass(vcw_cmd.cmd_bufs[i], &(rendp_begin_infos[i]), VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBeginRenderPass(cmd_buf, &(rendp_begin_info), VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.pipe);
+        vkCmdBindPipeline(vcw_cmd.cmd_bufs[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.pipe);
+        //
+        // fill viewport
+        //
+        VkViewport viewport;
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float) vcw_swap.extent.width;
+        viewport.height = (float) vcw_swap.extent.height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        printf("viewport filled.\n");
+        vkCmdSetViewport(vcw_cmd.cmd_bufs[i], 0, 1, &viewport);
+        //
+        // fill scissor
+        //
+        VkRect2D scissor;
+        VkOffset2D sci_offset;
+        sci_offset.x = 0;
+        sci_offset.y = 0;
+        scissor.offset = sci_offset;
+        scissor.extent = vcw_swap.extent;
+        printf("scissor filled.\n");
+        vkCmdSetScissor(vcw_cmd.cmd_bufs[i], 0, 1, &scissor);
 
-    //
-    // fill viewport
-    //
-    VkViewport viewport;
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = (float) vcw_swap.extent.width;
-    viewport.height = (float) vcw_swap.extent.height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(cmd_buf, 0, 1, &viewport);
-    //
-    // fill scissor
-    //
-    VkRect2D scissor;
-    VkOffset2D sci_offset;
-    sci_offset.x = 0;
-    sci_offset.y = 0;
-    scissor.offset = sci_offset;
-    scissor.extent = vcw_swap.extent;
-    vkCmdSetScissor(cmd_buf, 0, 1, &scissor);
+        vkCmdBindVertexBuffers(vcw_cmd.cmd_bufs[i], 0, 1, &vert_buf.buf, &(VkDeviceSize) {0});
+        vkCmdBindIndexBuffer(vcw_cmd.cmd_bufs[i], index_buf.buf, 0, VK_INDEX_TYPE_UINT32);
 
-    vkCmdBindVertexBuffers(cmd_buf, 0, 1, &vert_buf.buf, &(VkDeviceSize) {0});
-    vkCmdBindIndexBuffer(cmd_buf, index_buf.buf, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.layout, 0, vcw_desc.set_count,
-                            vcw_desc.sets, 0, NULL);
-    vkCmdDrawIndexed(cmd_buf, 6, 1, 0, 0, 0);
-    vkCmdEndRenderPass(cmd_buf);
-    vkEndCommandBuffer(cmd_buf);
+        vkCmdBindDescriptorSets(vcw_cmd.cmd_bufs[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.layout, 0,
+                                vcw_desc.set_count, vcw_desc.sets, 0, NULL);
+        vkCmdDrawIndexed(vcw_cmd.cmd_bufs[i], 6, 1, 0, 0, 0);
+        vkCmdEndRenderPass(vcw_cmd.cmd_bufs[i]);
+        vkEndCommandBuffer(vcw_cmd.cmd_bufs[i]);
+
+        printf("command buffer drawing recorded.\n");
+    }
 }
 
 VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
@@ -492,52 +507,71 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
     vkWaitForFences(vcw_dev.dev, 1, &(vcw_sync->fens[cur_frame]), VK_TRUE, UINT64_MAX);
 
     uint32_t img_index = 0;
-    VkResult result = vkAcquireNextImageKHR(vcw_dev.dev, vcw_swap->swap, UINT64_MAX, vcw_sync->img_avl_semps[cur_frame],
-                                            VK_NULL_HANDLE, &img_index);
+    VkResult result = vkAcquireNextImageKHR(vcw_dev.dev, vcw_swap->swap, UINT64_MAX,
+                                            vcw_sync->img_avl_semps[cur_frame], VK_NULL_HANDLE, &img_index);
 
-    vkResetFences(vcw_dev.dev, 1, &(vcw_sync->fens[cur_frame]));
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        recreate_swap(vcw_core, vcw_pipe_group);
+        return 2;
+    } else if (result != VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
+        printf("failed to acquire next image.\n");
+        return 1;
+    }
 
-    VkCommandBuffer cmd_buf = vcw_cmd->cmd_bufs[cur_frame];
-    vkResetCommandBuffer(cmd_buf, 0);
-    record_cmd_buf(vcw_core, vcw_pipe_group, cmd_buf, img_index);
+    if (vcw_sync->img_fens[img_index] != VK_NULL_HANDLE) {
+        vkWaitForFences(vcw_dev.dev, 1, &(vcw_sync->img_fens[img_index]), VK_TRUE, UINT64_MAX);
+    }
+
+    vcw_sync->img_fens[img_index] = vcw_sync->fens[cur_frame];
 
     VkSubmitInfo sub_info;
     sub_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     sub_info.pNext = NULL;
 
-    VkSemaphore semps_wait[1] = {vcw_sync->img_avl_semps[cur_frame]};
-    VkPipelineStageFlags wait_stages[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    VkSemaphore semps_wait[1];
+    semps_wait[0] = vcw_sync->img_avl_semps[cur_frame];
+    VkPipelineStageFlags wait_stages[1];
+    wait_stages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     sub_info.waitSemaphoreCount = 1;
     sub_info.pWaitSemaphores = &(semps_wait[0]);
     sub_info.pWaitDstStageMask = &(wait_stages[0]);
     sub_info.commandBufferCount = 1;
-    sub_info.pCommandBuffers = &cmd_buf;
+    sub_info.pCommandBuffers = &(vcw_cmd->cmd_bufs[img_index]);
 
-    VkSemaphore semps_sig[1] = {vcw_sync->rend_fin_semps[cur_frame]};
+    VkSemaphore semps_sig[1];
+    semps_sig[0] = vcw_sync->rend_fin_semps[cur_frame];
 
     sub_info.signalSemaphoreCount = 1;
     sub_info.pSignalSemaphores = &(semps_sig[0]);
 
-    vkQueueSubmit(vcw_dev.q_graph, 1, &sub_info, vcw_sync->fens[cur_frame]);
+    vkResetFences(vcw_dev.dev, 1, &(vcw_sync->fens[cur_frame]));
 
+    vkQueueSubmit(vcw_dev.q_graph, 1, &sub_info, vcw_sync->fens[cur_frame]);
     //
     // present
     //
     VkPresentInfoKHR pres_info;
-
     pres_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     pres_info.pNext = NULL;
     pres_info.waitSemaphoreCount = 1;
     pres_info.pWaitSemaphores = &(semps_sig[0]);
 
-    VkSwapchainKHR swaps[1] = {vcw_swap->swap};
+    VkSwapchainKHR swaps[1];
+    swaps[0] = vcw_swap->swap;
     pres_info.swapchainCount = 1;
     pres_info.pSwapchains = &(swaps[0]);
     pres_info.pImageIndices = &img_index;
     pres_info.pResults = NULL;
 
     result = vkQueuePresentKHR(vcw_dev.q_pres, &pres_info);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        recreate_swap(vcw_core, vcw_pipe_group);
+        return 2;
+    } else if (result != VK_SUCCESS) {
+        printf("failed to present.\n");
+    }
 
     vcw_sync->cur_frame = (cur_frame + 1) % vcw_sync->max_frames;
 
@@ -553,16 +587,19 @@ void clean_up_frame_bufs(VCW_Device vcw_dev, VCW_Renderpass vcw_rendp) {
 }
 
 void clean_up_sync(VCW_Device vcw_dev, VCW_Sync vcw_sync) {
-    for (uint32_t i = 0; i < vcw_sync.max_frames; i++) {
-        vkDestroySemaphore(vcw_dev.dev, vcw_sync.img_avl_semps[i], NULL);
-        vkDestroySemaphore(vcw_dev.dev, vcw_sync.rend_fin_semps[i], NULL);
-        vkDestroyFence(vcw_dev.dev, vcw_sync.fens[i], NULL);
-    }
-    free(vcw_sync.img_avl_semps);
-    free(vcw_sync.rend_fin_semps);
-    free(vcw_sync.fens);
+for (uint32_t i = 0; i < vcw_sync.max_frames; i++) {
+    vkDestroySemaphore(vcw_dev.dev, vcw_sync.img_avl_semps[i], NULL);
+    vkDestroySemaphore(vcw_dev.dev, vcw_sync.rend_fin_semps[i], NULL);
+    vkDestroyFence(vcw_dev.dev, vcw_sync.fens[i], NULL);
+}
+free(vcw_sync.img_avl_semps);
+free(vcw_sync.rend_fin_semps);
+free(vcw_sync.fens);
 }
 
+//
+// TODO: fix lag on resizing
+//
 void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
     //
     // unpack group arguments
@@ -577,6 +614,7 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
     //
     // recreate swapchain
     //
+    printf("\n");
     int width = 0, height = 0;
     glfwGetFramebufferSize(vcw_surf->window, &width, &height);
     while (width == 0 || height == 0) {
@@ -585,8 +623,7 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
     }
 
     clock_t start = clock();
-    VkResult result = vkDeviceWaitIdle(vcw_dev.dev);
-    printf("%d\n", result);
+    vkDeviceWaitIdle(vcw_dev.dev);
     clock_t end = clock();
     double elapsed_time = (end - start) / (double) CLOCKS_PER_SEC;
     printf("device idle: %f\n", elapsed_time);
@@ -599,11 +636,11 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
     update_surface_info(vcw_surf, vcw_phy_dev);
 
     *vcw_swap = *create_swap(vcw_dev, *vcw_surf, NULL);
-    *vcw_cmd = create_cmd_pool(vcw_dev, 2);
+    *vcw_cmd = create_cmd_pool(vcw_dev, *vcw_swap);
     create_frame_bufs(vcw_dev, *vcw_swap, vcw_rendp, vcw_swap->extent);
     *vcw_sync = create_sync(vcw_dev, *vcw_swap, vcw_sync->max_frames);
 
-    printf("swapchain recreated with time: %f\n", elapsed_time);
+    prepare_rendering(vcw_core, vcw_pipe_group);
 }
 
 void destroy_render(VCW_Device vcw_dev, VCW_Pipeline vcw_pipe, VCW_Renderpass vcw_rendp, VCW_Sync vcw_sync) {

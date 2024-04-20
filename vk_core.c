@@ -93,7 +93,8 @@ VCW_PhysicalDevice *get_phy_dev(VkInstance inst) {
     uint32_t *integrated_gpu_list = malloc(phy_dev_count * sizeof(uint32_t));
     uint32_t integrated_gpu_count = 0;
 
-    VkPhysicalDeviceMemoryProperties *phy_dev_mem_props = malloc(phy_dev_count * sizeof(VkPhysicalDeviceMemoryProperties));
+    VkPhysicalDeviceMemoryProperties *phy_dev_mem_props = malloc(
+            phy_dev_count * sizeof(VkPhysicalDeviceMemoryProperties));
     uint32_t *phy_dev_mem_count = malloc(phy_dev_count * sizeof(uint32_t));
     VkDeviceSize *phy_dev_mem_total = malloc(phy_dev_count * sizeof(VkDeviceSize));
 
@@ -269,7 +270,10 @@ void update_surface_info(VCW_Surface *vcw_surf, VCW_PhysicalDevice vcw_phy_dev) 
     printf("fetched caps from surface.\n");
     int wind_w, wind_h;
     glfwGetFramebufferSize(vcw_surf->window, &wind_w, &wind_h);
-    vcw_surf->window_extent = (VkExtent2D) {wind_w, wind_h};
+    uint32_t conv_w = (uint32_t) wind_w;
+    uint32_t conv_h = (uint32_t) wind_h;
+    vcw_surf->window_extent = (VkExtent2D) {conv_w, conv_h};
+
     //
     // compare extents
     //
@@ -279,10 +283,10 @@ void update_surface_info(VCW_Surface *vcw_surf, VCW_PhysicalDevice vcw_phy_dev) 
     if (caps.currentExtent.width != wind_w || caps.currentExtent.height != wind_h) {
         extent_suitable = 0;
         printf("actual extent size doesn't match framebuffers, resizing...\n");
-        actual_extent.width = wind_w > caps.maxImageExtent.width ? caps.maxImageExtent.width : wind_w;
-        actual_extent.width = wind_w < caps.minImageExtent.width ? caps.minImageExtent.width : wind_w;
-        actual_extent.height = wind_h > caps.maxImageExtent.height ? caps.maxImageExtent.height : wind_h;
-        actual_extent.height = wind_h < caps.minImageExtent.height ? caps.minImageExtent.height : wind_h;
+        actual_extent.width = conv_w > caps.maxImageExtent.width ? caps.maxImageExtent.width : conv_w;
+        actual_extent.width = conv_w < caps.minImageExtent.width ? caps.minImageExtent.width : conv_w;
+        actual_extent.height = conv_h > caps.maxImageExtent.height ? caps.maxImageExtent.height : conv_h;
+        actual_extent.height = conv_h < caps.minImageExtent.height ? caps.minImageExtent.height : conv_h;
     }
     vcw_surf->caps = caps;
     vcw_surf->extent_suitable = extent_suitable;
@@ -297,6 +301,7 @@ VCW_Surface *create_surf(VkInstance inst, VCW_PhysicalDevice vcw_phy_dev, VCW_De
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // TODO: support dynamic window size
     VCW_SURF->window = glfwCreateWindow(dim.width, dim.height, "Vk Wrapper", NULL, NULL);
+    glfwMaximizeWindow(VCW_SURF->window);
     VCW_SURF->window_extent = dim;
     VCW_SURF->resized = 0;
     printf("window created.\n");
@@ -419,7 +424,7 @@ VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface vcw_surf, VkSwapchain
     return VCW_SWAP;
 }
 
-VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, uint32_t cmd_buf_count) {
+VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, VCW_Swapchain vcw_swap) {
     VCW_CommandPool vcw_cmd;
     //
     // create command pool
@@ -427,7 +432,7 @@ VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, uint32_t cmd_buf_count) {
     VkCommandPoolCreateInfo cmd_pool_info;
     cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     cmd_pool_info.pNext = NULL;
-    cmd_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    cmd_pool_info.flags = 0;
     cmd_pool_info.queueFamilyIndex = vcw_dev.qf_best_idx;
 
     vkCreateCommandPool(vcw_dev.dev, &cmd_pool_info, NULL, &vcw_cmd.cmd_pool);
@@ -440,7 +445,7 @@ VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, uint32_t cmd_buf_count) {
     cmd_alloc_info.pNext = NULL;
     cmd_alloc_info.commandPool = vcw_cmd.cmd_pool;
     cmd_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    vcw_cmd.cmd_buf_count = cmd_buf_count;
+    vcw_cmd.cmd_buf_count = vcw_swap.img_count;
     cmd_alloc_info.commandBufferCount = vcw_cmd.cmd_buf_count;
 
     vcw_cmd.cmd_bufs = malloc(vcw_cmd.cmd_buf_count * sizeof(VkCommandBuffer));
@@ -468,53 +473,28 @@ void clean_up_cmd_pool(VCW_Device vcw_dev, VCW_CommandPool vcw_cmd) {
     printf("command pool destroyed.\n");
 }
 
-/*
-void destroy_vk_core(VkInstance inst, VCW_Device *dev,
-                     VCW_Swapchain *swap, VCW_Surface *surf,
-                     VCW_RenderMgmt *rend_mgmt) {
+
+void destroy_vk_core(VkInstance inst, VCW_Device vcw_dev, VCW_Swapchain vcw_swap, VCW_Surface vcw_surf,
+                     VCW_CommandPool vcw_cmd) {
     //
-    // free command buffer
+    // clean up cmd pool
     //
-    vkFreeCommandBuffers(dev->dev, rend_mgmt->cmd_pool, rend_mgmt->img_count,
-                         rend_mgmt->cmd_buffs);
-    printf("command buffers freed.\n");
+    clean_up_cmd_pool(vcw_dev, vcw_cmd);
     //
-    // destroy semaphores and fences
+    // clean up swapchain
     //
-    for (uint32_t i = 0; i < rend_mgmt->max_frames; i++) {
-        vkDestroySemaphore(dev->dev, rend_mgmt->img_avl_semps[i], NULL);
-        vkDestroySemaphore(dev->dev, rend_mgmt->rend_fin_semps[i], NULL);
-        vkDestroyFence(dev->dev, rend_mgmt->fens[i], NULL);
-    }
-    printf("semaphores and fences destroyed.\n");
-    //
-    // destroy command pool
-    //
-    vkDestroyCommandPool(dev->dev, rend_mgmt->cmd_pool, NULL);
-    printf("command pool destroyed.\n");
-    //
-    // destroy imageview
-    //
-    for (uint32_t i = 0; i < swap->img_count; i++) {
-        vkDestroyImageView(dev->dev, swap->img_views[i], NULL);
-        printf("image view %d destroyed.\n", i);
-    }
-    //
-    // destroy swapchain
-    //
-    vkDestroySwapchainKHR(dev->dev, swap->swap, NULL);
-    printf("swapchain destroyed.\n");
+    clean_up_swap(vcw_dev, vcw_swap);
     //
     // destroy surface and window
     //
-    vkDestroySurfaceKHR(inst, surf->surf, NULL);
+    vkDestroySurfaceKHR(inst, vcw_surf.surf, NULL);
     printf("surface destroyed.\n");
-    glfwDestroyWindow(surf->window);
+    glfwDestroyWindow(vcw_surf.window);
     printf("window destroyed.\n");
     //
     // destroy device
     //
-    vkDestroyDevice(dev->dev, NULL);
+    vkDestroyDevice(vcw_dev.dev, NULL);
     printf("logical device destroyed.\n");
     //
     // destroy instance
@@ -524,4 +504,3 @@ void destroy_vk_core(VkInstance inst, VCW_Device *dev,
 
     glfwTerminate();
 }
-*/

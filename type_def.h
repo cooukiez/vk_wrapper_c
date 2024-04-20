@@ -76,8 +76,8 @@ typedef struct VCW_Pipeline {
 } VCW_Pipeline;
 
 typedef struct VCW_Sync {
-    // VkFence *img_fens;
-    // uint32_t img_count;
+    VkFence *img_fens;
+    uint32_t img_count;
 
     // THESE ARE MAX FRAMES IN FLIGHT !!!
     uint32_t max_frames;
