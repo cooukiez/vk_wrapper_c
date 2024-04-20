@@ -540,7 +540,7 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
     end = clock();
     elapsed_time = (end - start) / (double) CLOCKS_PER_SEC;
     printf("acquire next image time: %f\n", elapsed_time);
-
+    // test
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         printf("swapchain out of date at start of frame.\n");
         start = clock();
