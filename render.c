@@ -513,7 +513,7 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreate_swap(vcw_core, vcw_pipe_group);
         return 2;
-    } else if (result != VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
+    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         printf("failed to acquire next image.\n");
         return 1;
     }
@@ -566,7 +566,8 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
 
     result = vkQueuePresentKHR(vcw_dev.q_pres, &pres_info);
 
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || vcw_surf->resized) {
+        vcw_surf->resized = 0;
         recreate_swap(vcw_core, vcw_pipe_group);
         return 2;
     } else if (result != VK_SUCCESS) {

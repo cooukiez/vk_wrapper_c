@@ -97,6 +97,7 @@ int main(int argc, char **argv) {
     prepare_rendering(vcw_core, vcw_pipe_group);
     while (!glfwWindowShouldClose(surf->window)) {
         glfwPollEvents();
+        /*
         if (surf->resized == 1) {
             surf->resized = 0;
             clock_t start = clock();
@@ -109,6 +110,7 @@ int main(int argc, char **argv) {
             double elapsed = (double) (end - start) / CLOCKS_PER_SEC;
             printf("swapchain recreated in %f seconds.\n", elapsed);
         }
+         */
         //
         // submit
         //
