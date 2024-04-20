@@ -21,6 +21,7 @@ VCW_Buffer create_buffer(VCW_Device vcw_dev, size_t size, uint32_t alignment,
     buf.alignment = alignment;
     buf.usage = usage;
     buf.sharing = sharing;
+    buf.cpu_mem_pointer = NULL;
 
     buf.buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buf.buf_info.size = buf.size;
@@ -53,9 +54,17 @@ void allocate_memory(VCW_Device vcw_dev, VCW_PhysicalDevice vcw_phy_dev, VCW_Buf
     vkBindBufferMemory(vcw_dev.dev, buf->buf, buf->mem, 0);
 }
 
-void init_mem(VCW_Device vcw_dev, VCW_Buffer *buf, void *data) {
-    void *empty_data;
-    vkMapMemory(vcw_dev.dev, buf->mem, 0, buf->buf_info.size, 0, &empty_data);
-    memcpy(empty_data, data, buf->size);
+void copy_data_to_buf(VCW_Device vcw_dev, VCW_Buffer *buf, void *data) {
+    void *cpu_mem_pointer;
+    vkMapMemory(vcw_dev.dev, buf->mem, 0, buf->buf_info.size, 0, &cpu_mem_pointer);
+    memcpy(cpu_mem_pointer, data, buf->size);
+    vkUnmapMemory(vcw_dev.dev, buf->mem);
+}
+
+void map_mem(VCW_Device vcw_dev, VCW_Buffer *buf) {
+    vkMapMemory(vcw_dev.dev, buf->mem, 0, buf->buf_info.size, 0, &buf->cpu_mem_pointer);
+}
+
+void unmap_mem(VCW_Device vcw_dev, VCW_Buffer *buf) {
     vkUnmapMemory(vcw_dev.dev, buf->mem);
 }

@@ -1,3 +1,5 @@
+#include <cglm/cglm.h>
+
 #include "GLFW/glfw3.h"
 #include "vulkan/vulkan.h"
 
@@ -119,19 +121,38 @@ typedef struct VCW_Buffer {
     VkMemoryRequirements mem_req;
     uint32_t mem_type;
     VkDeviceMemory mem;
+    // only valid if map is called
+    void *cpu_mem_pointer;
 } VCW_Buffer;
 //
 // pipeline group
 //
-typedef struct VCW_PipelineGroup {
+typedef struct VCW_Uniform {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+
+    vec2 res;
+    uint32_t time;
+} VCW_Uniform;
+
+typedef struct VCW_App {
     VCW_CommandPool *cmd;
     VCW_Renderpass *rendp;
     VCW_Pipeline *pipe;
     VCW_DescriptorPool *desc;
     VCW_Sync *sync;
+
     VCW_Buffer *vert_buf;
     VCW_Buffer *index_buf;
-} VCW_PipelineGroup;
+    uint32_t index_count;
+
+    VCW_Uniform *cpu_side_unif;
+    VCW_Buffer *unif_bufs;
+    uint32_t unif_buf_count;
+
+    uint32_t frame_count;
+} VCW_App;
 //
 // global definitions
 //

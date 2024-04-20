@@ -29,3 +29,5 @@ add_custom_target(vert.spv
 
 add_custom_target(frag.spv
 	COMMAND glslangValidator --quiet -V ${CMAKE_SOURCE_DIR}/shader.frag -o ${CMAKE_BINARY_DIR}/frag.spv)
+
+add_dependencies(vk_wrapper vert.spv frag.spv)

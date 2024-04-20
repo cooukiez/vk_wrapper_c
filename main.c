@@ -24,6 +24,7 @@ int main(int argc, char **argv) {
     VCW_CommandPool cmd_pool = create_cmd_pool(*dev, *swap);
     VCW_Renderpass rendp = create_rendp(*dev, *surf);
     create_frame_bufs(*dev, *swap, &rendp, swap->extent);
+    VCW_Sync sync = create_sync(*dev, *swap, 2);
 
     //
     //
@@ -36,7 +37,7 @@ int main(int argc, char **argv) {
                                          VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
 
     allocate_memory(*dev, *phy_dev, &index_buf);
-    init_mem(*dev, &index_buf, &indices[0]);
+    copy_data_to_buf(*dev, &index_buf, &indices[0]);
 
     printf("index buffer created.\n");
     //
@@ -50,20 +51,28 @@ int main(int argc, char **argv) {
                                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
 
     allocate_memory(*dev, *phy_dev, &vert_buf);
-    init_mem(*dev, &vert_buf, &vertices[0]);
+    copy_data_to_buf(*dev, &vert_buf, &vertices[0]);
 
     printf("vertex buffer created.\n");
     //
     // create uniform buffer
     //
-    struct UniformSet uniform[] = {{0, 0, 0}};
-    VCW_Buffer uniform_buf = create_buffer(*dev, sizeof(uniform), sizeof(struct UniformSet),
-                                           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
+    VCW_Uniform unif;
+    glm_mat4_zero(unif.model);
+    glm_mat4_zero(unif.view);
+    glm_mat4_zero(unif.proj);
+    glm_vec2_zero(unif.res);
+    unif.time = 0;
 
-    allocate_memory(*dev, *phy_dev, &uniform_buf);
-    init_mem(*dev, &uniform_buf, &uniform[0]);
+    VCW_Buffer *unif_bufs = malloc(swap->img_count * sizeof(VCW_Buffer));
+    for (uint32_t i = 0; i < sync.max_frames; i++) {
+        unif_bufs[i] = create_buffer(*dev, sizeof(unif), sizeof(VCW_Uniform), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                     VK_SHARING_MODE_EXCLUSIVE);
 
-    printf("uniform buffer created.\n");
+        allocate_memory(*dev, *phy_dev, &unif_bufs[i]);
+        map_mem(*dev, &unif_bufs[i]);
+    }
+    printf("uniform buffers created.\n");
     //
     //
     // descriptor creation part
@@ -71,56 +80,55 @@ int main(int argc, char **argv) {
     // create descriptor pool
     //
     VCW_DescriptorPool desc_group = create_vcw_desc();
-    add_desc_set_layout(*dev, &desc_group, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                        VK_SHADER_STAGE_ALL, 1);
+    add_desc_set_layout(*dev, &desc_group, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL, 1);
+    add_desc_set_layout(*dev, &desc_group, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL, 1);
 
     VkDescriptorPoolSize unif_pool_size;
     unif_pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    unif_pool_size.descriptorCount =
-            1; // number of individual descriptors of that type
+    // number of individual descriptors of that type
+    unif_pool_size.descriptorCount = 2;
     VkDescriptorPoolSize pool_sizes[] = {unif_pool_size};
     init_desc_pool(*dev, &desc_group, &pool_sizes[0], 1);
     //
     // write uniform descriptor
     //
-    write_buffer_desc(*dev, &desc_group, &uniform_buf, 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    /*
-
-    */
+    for (uint32_t i = 0; i < sync.max_frames; i++) {
+        write_buffer_desc(*dev, &desc_group, &unif_bufs[i], i, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    }
 
     VCW_Pipeline pipe = create_pipe(*dev, rendp, desc_group, swap->extent);
-    VCW_Sync sync = create_sync(*dev, *swap, 2);
 
-    VCW_PipelineGroup vcw_pipe_group = {&cmd_pool, &rendp, &pipe, &desc_group, &sync, &vert_buf, &index_buf};
+    VCW_App vcw_app;
+    vcw_app.cmd = &cmd_pool;
+    vcw_app.rendp = &rendp;
+    vcw_app.pipe = &pipe;
+    vcw_app.desc = &desc_group;
+    vcw_app.sync = &sync;
+    vcw_app.vert_buf = &vert_buf;
+    vcw_app.index_buf = &index_buf;
+    vcw_app.index_count = 6;
+    vcw_app.cpu_side_unif = &unif;
+    vcw_app.unif_bufs = unif_bufs;
+    vcw_app.unif_buf_count = sync.max_frames;
+    vcw_app.frame_count = 0;
 
     printf("\n");
-    prepare_rendering(vcw_core, vcw_pipe_group);
+    prepare_rendering(vcw_core, vcw_app);
     while (!glfwWindowShouldClose(surf->window)) {
         glfwPollEvents();
-        /*
-        if (surf->resized == 1) {
-            surf->resized = 0;
-            clock_t start = clock();
-            for (uint32_t i = 0; i < sync.max_frames; i++) {
-                vkWaitForFences(dev->dev, 1, &sync.fens[i], VK_TRUE, UINT64_MAX);
-                vkResetFences(dev->dev, 1, &sync.fens[i]);
-            }
-            recreate_swap(vcw_core, vcw_pipe_group);
-            clock_t end = clock();
-            double elapsed = (double) (end - start) / CLOCKS_PER_SEC;
-            printf("swapchain recreated in %f seconds.\n", elapsed);
-        }
-         */
         //
         // submit
         //
-        render(vcw_core, vcw_pipe_group);
+        render(vcw_core, vcw_app);
+        vcw_app.frame_count += 1;
+        vcw_app.cpu_side_unif->time += 1;
+        glm_vec2_copy((vec2){swap->extent.width, swap->extent.height}, vcw_app.cpu_side_unif->res);
     }
     vkDeviceWaitIdle(dev->dev);
     printf("command buffers finished.\n");
 
     destroy_render(*dev, pipe, rendp, sync);
-    destroy_vk_core(inst, *dev, *swap,*surf, cmd_pool);
+    destroy_vk_core(inst, *dev, *swap, *surf, cmd_pool);
 
     return 0;
 }

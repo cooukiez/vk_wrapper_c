@@ -406,18 +406,18 @@ VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, uint32_t max_fr
     return vcw_sync;
 }
 
-void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
+void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
     //
     // unpack group arguments
     //
     VCW_Device vcw_dev = *vcw_core.dev;
     VCW_Swapchain vcw_swap = *vcw_core.swap;
-    VCW_CommandPool vcw_cmd = *vcw_pipe_group.cmd;
-    VCW_Renderpass vcw_rendp = *vcw_pipe_group.rendp;
-    VCW_Pipeline vcw_pipe = *vcw_pipe_group.pipe;
-    VCW_DescriptorPool vcw_desc = *vcw_pipe_group.desc;
-    VCW_Buffer vert_buf = *vcw_pipe_group.vert_buf;
-    VCW_Buffer index_buf = *vcw_pipe_group.index_buf;
+    VCW_CommandPool vcw_cmd = *vcw_app.cmd;
+    VCW_Renderpass vcw_rendp = *vcw_app.rendp;
+    VCW_Pipeline vcw_pipe = *vcw_app.pipe;
+    VCW_DescriptorPool vcw_desc = *vcw_app.desc;
+    VCW_Buffer vert_buf = *vcw_app.vert_buf;
+    VCW_Buffer index_buf = *vcw_app.index_buf;
     //
     // render preparation
     //
@@ -429,6 +429,7 @@ void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_grou
     rendp_area.extent = vcw_swap.extent;
     VkClearValue clear_val = {0.5f, 0.0f, 0.5f, 0.0f};
     for (uint32_t i = 0; i < vcw_cmd.cmd_buf_count; i++) {
+        vkResetCommandBuffer(vcw_cmd.cmd_bufs[i], 0);
         //
         // Begin command buffer
         //
@@ -482,7 +483,7 @@ void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_grou
 
         vkCmdBindDescriptorSets(vcw_cmd.cmd_bufs[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.layout, 0,
                                 vcw_desc.set_count, vcw_desc.sets, 0, NULL);
-        vkCmdDrawIndexed(vcw_cmd.cmd_bufs[i], 6, 1, 0, 0, 0);
+        vkCmdDrawIndexed(vcw_cmd.cmd_bufs[i], vcw_app.index_count, 1, 0, 0, 0);
         vkCmdEndRenderPass(vcw_cmd.cmd_bufs[i]);
         vkEndCommandBuffer(vcw_cmd.cmd_bufs[i]);
 
@@ -490,7 +491,7 @@ void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_grou
     }
 }
 
-VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
+VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
     clock_t render_start = clock();
     //
     // unpack group arguments
@@ -498,8 +499,8 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
     VCW_Device vcw_dev = *vcw_core.dev;
     VCW_Surface *vcw_surf = vcw_core.surf;
     VCW_Swapchain *vcw_swap = vcw_core.swap;
-    VCW_CommandPool *vcw_cmd = vcw_pipe_group.cmd;
-    VCW_Sync *vcw_sync = vcw_pipe_group.sync;
+    VCW_CommandPool *vcw_cmd = vcw_app.cmd;
+    VCW_Sync *vcw_sync = vcw_app.sync;
     //
     // main rendering
     //
@@ -511,7 +512,7 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
                                             vcw_sync->img_avl_semps[cur_frame], VK_NULL_HANDLE, &img_index);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        recreate_swap(vcw_core, vcw_pipe_group);
+        recreate_swap(vcw_core, vcw_app);
         return 2;
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         printf("failed to acquire next image.\n");
@@ -523,6 +524,9 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
     }
 
     vcw_sync->img_fens[img_index] = vcw_sync->fens[cur_frame];
+
+    VCW_Buffer unif_buf = vcw_app.unif_bufs[cur_frame];
+    memcpy(unif_buf.cpu_mem_pointer, vcw_app.cpu_side_unif, unif_buf.size);
 
     VkSubmitInfo sub_info;
     sub_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -568,7 +572,7 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || vcw_surf->resized) {
         vcw_surf->resized = 0;
-        recreate_swap(vcw_core, vcw_pipe_group);
+        recreate_swap(vcw_core, vcw_app);
         return 2;
     } else if (result != VK_SUCCESS) {
         printf("failed to present.\n");
@@ -579,26 +583,7 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
     return 0;
 }
 
-void clean_up_frame_bufs(VCW_Device vcw_dev, VCW_Renderpass vcw_rendp) {
-    for (uint32_t i = 0; i < vcw_rendp.frame_buf_count; i++) {
-        vkDestroyFramebuffer(vcw_dev.dev, vcw_rendp.frame_bufs[i], NULL);
-        printf("framebuffer %d destroyed.\n", i);
-    }
-    free(vcw_rendp.frame_bufs);
-}
-
-void clean_up_sync(VCW_Device vcw_dev, VCW_Sync vcw_sync) {
-for (uint32_t i = 0; i < vcw_sync.max_frames; i++) {
-    vkDestroySemaphore(vcw_dev.dev, vcw_sync.img_avl_semps[i], NULL);
-    vkDestroySemaphore(vcw_dev.dev, vcw_sync.rend_fin_semps[i], NULL);
-    vkDestroyFence(vcw_dev.dev, vcw_sync.fens[i], NULL);
-}
-free(vcw_sync.img_avl_semps);
-free(vcw_sync.rend_fin_semps);
-free(vcw_sync.fens);
-}
-
-void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
+void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
     //
     // unpack group arguments
     //
@@ -606,9 +591,7 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
     VCW_Device vcw_dev = *vcw_core.dev;
     VCW_Surface *vcw_surf = vcw_core.surf;
     VCW_Swapchain *vcw_swap = vcw_core.swap;
-    VCW_Renderpass *vcw_rendp = vcw_pipe_group.rendp;
-    VCW_Sync *vcw_sync = vcw_pipe_group.sync;
-    VCW_CommandPool *vcw_cmd = vcw_pipe_group.cmd;
+    VCW_Renderpass *vcw_rendp = vcw_app.rendp;
     //
     // recreate swapchain
     //
@@ -626,19 +609,35 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
     double elapsed_time = (end - start) / (double) CLOCKS_PER_SEC;
     printf("device idle: %f\n", elapsed_time);
 
-    clean_up_sync(vcw_dev, *vcw_sync);
     clean_up_frame_bufs(vcw_dev, *vcw_rendp);
-    clean_up_cmd_pool(vcw_dev, *vcw_cmd);
     clean_up_swap(vcw_dev, *vcw_swap);
 
     update_surface_info(vcw_surf, vcw_phy_dev);
 
     *vcw_swap = *create_swap(vcw_dev, *vcw_surf, NULL);
-    *vcw_cmd = create_cmd_pool(vcw_dev, *vcw_swap);
     create_frame_bufs(vcw_dev, *vcw_swap, vcw_rendp, vcw_swap->extent);
-    *vcw_sync = create_sync(vcw_dev, *vcw_swap, vcw_sync->max_frames);
 
-    prepare_rendering(vcw_core, vcw_pipe_group);
+    prepare_rendering(vcw_core, vcw_app);
+}
+
+void clean_up_frame_bufs(VCW_Device vcw_dev, VCW_Renderpass vcw_rendp) {
+    for (uint32_t i = 0; i < vcw_rendp.frame_buf_count; i++) {
+        vkDestroyFramebuffer(vcw_dev.dev, vcw_rendp.frame_bufs[i], NULL);
+        printf("framebuffer %d destroyed.\n", i);
+    }
+    free(vcw_rendp.frame_bufs);
+}
+
+void clean_up_sync(VCW_Device vcw_dev, VCW_Sync vcw_sync) {
+    for (uint32_t i = 0; i < vcw_sync.max_frames; i++) {
+        vkDestroySemaphore(vcw_dev.dev, vcw_sync.img_avl_semps[i], NULL);
+        vkDestroySemaphore(vcw_dev.dev, vcw_sync.rend_fin_semps[i], NULL);
+        vkDestroyFence(vcw_dev.dev, vcw_sync.fens[i], NULL);
+    }
+    free(vcw_sync.img_avl_semps);
+    free(vcw_sync.rend_fin_semps);
+    free(vcw_sync.fens);
+    free(vcw_sync.img_fens);
 }
 
 void destroy_render(VCW_Device vcw_dev, VCW_Pipeline vcw_pipe, VCW_Renderpass vcw_rendp, VCW_Sync vcw_sync) {

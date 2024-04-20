@@ -1,5 +1,13 @@
 #version 450
 
+layout(binding = 0) uniform UniformBuffer {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+    vec2 resolution;
+    uint time;
+} ubo;
+
 layout (location = 0) out vec3 fragColor;
 layout (location = 0) in vec3 inPosition;
 layout (location = 1) in vec3 inColor;

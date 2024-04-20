@@ -432,7 +432,7 @@ VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, VCW_Swapchain vcw_swap) {
     VkCommandPoolCreateInfo cmd_pool_info;
     cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     cmd_pool_info.pNext = NULL;
-    cmd_pool_info.flags = 0;
+    cmd_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     cmd_pool_info.queueFamilyIndex = vcw_dev.qf_best_idx;
 
     vkCreateCommandPool(vcw_dev.dev, &cmd_pool_info, NULL, &vcw_cmd.cmd_pool);

@@ -19,6 +19,10 @@ VCW_Buffer create_buffer(VCW_Device vcw_dev, size_t size, uint32_t alignment,
 void allocate_memory(VCW_Device vcw_dev, VCW_PhysicalDevice phy_dev,
                      VCW_Buffer *buf);
 
-void init_mem(VCW_Device vcw_dev, VCW_Buffer *buf, void *data);
+void copy_data_to_buf(VCW_Device vcw_dev, VCW_Buffer *buf, void *data);
+
+void map_mem(VCW_Device vcw_dev, VCW_Buffer *buf);
+
+void unmap_mem(VCW_Device vcw_dev, VCW_Buffer *buf);
 
 #endif
