@@ -252,6 +252,8 @@ VCW_Device *create_dev(VCW_PhysicalDevice *vcw_phy_dev) {
 }
 
 static void cursor_position_callback(GLFWwindow *window, double x, double y) {
+    VCW_SURF->cursor_delta[0] = VCW_SURF->cursor_position[0] - (float) x;
+    VCW_SURF->cursor_delta[1] = VCW_SURF->cursor_position[1] - (float) y;
     VCW_SURF->cursor_position[0] = (float) x;
     VCW_SURF->cursor_position[1] = (float) y;
 }
@@ -304,6 +306,7 @@ VCW_Surface *create_surf(VkInstance inst, VCW_PhysicalDevice vcw_phy_dev, VCW_De
     VCW_SURF->window_extent = dim;
     VCW_SURF->resized = 0;
     glm_vec2_zero(VCW_SURF->cursor_position);
+    glm_vec2_copy((vec2) {dim.width / 2, dim.height / 2}, VCW_SURF->cursor_delta);
     printf("window created.\n");
     //
     // create surface

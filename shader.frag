@@ -168,6 +168,7 @@ void main(){
 	vec2 fragCoord = gl_FragCoord.xy;
 	vec2 iResolution = ubo.resolution;
 	float iTime = float(ubo.time);
+	/*
 	//outColor=vec4(sin(ubo.time + fragCoord.x), sin(ubo.time - fragCoord.y), sin(ubo.time * fragCoord.x),1);
 
 
@@ -198,4 +199,12 @@ void main(){
     col = mix(vec3(.4, 0.0, 0.0), col, smoothstep(.5, .495, uv.x) + smoothstep(.5, .505, uv.x));
 	iTime *= 0.0001;
 	outColor = vec4(col * vec3(sin(iTime), cos(iTime), 1 / sin(iTime / 1000)), 1.0);
+	*/
+	vec2 uv = fragCoord/iResolution.xy;
+
+	// Time varying pixel color
+	vec3 col = 0.5 + 0.5*cos(iTime/100+uv.xyx+vec3(0,2,4));
+
+	// Output to screen
+	outColor = vec4(col,1.0);
 }

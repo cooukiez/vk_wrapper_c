@@ -123,6 +123,32 @@ int main(int argc, char **argv) {
         vcw_app.frame_count += 1;
         vcw_app.cpu_side_unif->time += 1;
         glm_vec2_copy((vec2){swap->extent.width, swap->extent.height}, vcw_app.cpu_side_unif->res);
+
+        vec2 mouse_rot;
+        glm_vec2_scale(surf->cursor_delta, 0.05f, mouse_rot);
+        mouse_rot[1] = fminf(fmaxf(mouse_rot[1], -89.0f), 89.0f);
+
+        // Update camera
+        vec3 cam_front;
+        vec3 cam_pos = {0.0f, -10.0f, 0.0f};
+        float yaw = glm_rad(mouse_rot[0]);
+        float pitch = glm_rad(mouse_rot[1]);
+
+        cam_front[0] = cosf(yaw) * cosf(pitch);
+        cam_front[1] = sinf(pitch);
+        cam_front[2] = sinf(yaw) * cosf(pitch);
+
+        glm_vec3_add(cam_pos, cam_front, cam_front);
+        mat4 view = GLM_MAT4_IDENTITY_INIT;
+        glm_translate(view, (vec3){0.0f, 0.0f, 0.0f});
+        mat4 projection = GLM_MAT4_IDENTITY_INIT;
+        glm_perspective((unif.res[0] / unif.res[1]), 45.0f, 0.1f, 200.0f, projection);
+        mat4 look_at = GLM_MAT4_IDENTITY_INIT;
+        vec4 cam_up = {0.0f, 1.0f, 0.0f, 0.0f};
+        glm_lookat(cam_pos, cam_front, cam_up, look_at);
+
+        glm_mat4_mul(projection, look_at, unif.view);
+        glm_mat4_mul(unif.view, view, unif.view);
     }
     vkDeviceWaitIdle(dev->dev);
     printf("command buffers finished.\n");
