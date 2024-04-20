@@ -493,14 +493,6 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
     VkResult result = vkAcquireNextImageKHR(vcw_dev.dev, vcw_swap->swap, UINT64_MAX, vcw_sync->img_avl_semps[cur_frame],
                                             VK_NULL_HANDLE, &img_index);
 
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        recreate_swap(vcw_core, vcw_pipe_group);
-        return 2;
-    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-        printf("failed to acquire next image.\n");
-        return 1;
-    }
-
     vkResetFences(vcw_dev.dev, 1, &(vcw_sync->fens[cur_frame]));
 
     VkCommandBuffer cmd_buf = vcw_cmd->cmd_bufs[cur_frame];
@@ -545,30 +537,6 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_gro
 
     result = vkQueuePresentKHR(vcw_dev.q_pres, &pres_info);
 
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        printf("out of date or suboptimal.\n");
-        vcw_surf->resized = 0;
-        clock_t start = clock();
-
-        for (uint32_t i = 0; i < vcw_sync->max_frames; i++) {
-            VkResult result = vkWaitForFences(vcw_dev.dev, 1, &vcw_sync->fens[i], VK_TRUE, UINT64_MAX);
-            if (result == VK_SUCCESS) {
-                printf("fence %d waited.\n", i);
-            }
-        }
-
-        printf("cur frame: %d | img index: %d\n", cur_frame, img_index);
-        recreate_swap(vcw_core, vcw_pipe_group);
-        clock_t end = clock();
-        double elapsed_time = (end - start) / (double) CLOCKS_PER_SEC;
-        printf("swapchain recreated with time: %f\n", elapsed_time);
-
-        return 2;
-    } else if (result != VK_SUCCESS) {
-        printf("failed to present.\n");
-        return 1;
-    }
-
     vcw_sync->cur_frame = (cur_frame + 1) % vcw_sync->max_frames;
 
     return 0;
@@ -603,6 +571,7 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
     VCW_Swapchain *vcw_swap = vcw_core.swap;
     VCW_Renderpass *vcw_rendp = vcw_pipe_group.rendp;
     VCW_Sync *vcw_sync = vcw_pipe_group.sync;
+    VCW_CommandPool *vcw_cmd = vcw_pipe_group.cmd;
     //
     // recreate swapchain
     //
@@ -622,11 +591,13 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
 
     clean_up_sync(vcw_dev, *vcw_sync);
     clean_up_frame_bufs(vcw_dev, *vcw_rendp);
+    clean_up_cmd_pool(vcw_dev, *vcw_cmd);
     clean_up_swap(vcw_dev, *vcw_swap);
 
     update_surface_info(vcw_surf, vcw_phy_dev);
 
     *vcw_swap = *create_swap(vcw_dev, *vcw_surf, NULL);
+    *vcw_cmd = create_cmd_pool(vcw_dev, 2);
     create_frame_bufs(vcw_dev, *vcw_swap, vcw_rendp, vcw_swap->extent);
     *vcw_sync = create_sync(vcw_dev, *vcw_swap, vcw_sync->max_frames);
 
