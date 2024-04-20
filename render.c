@@ -598,9 +598,6 @@ free(vcw_sync.rend_fin_semps);
 free(vcw_sync.fens);
 }
 
-//
-// TODO: fix lag on resizing
-//
 void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group) {
     //
     // unpack group arguments
