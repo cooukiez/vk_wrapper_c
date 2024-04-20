@@ -2,45 +2,41 @@
 
 #include "vulkan/vulkan.h"
 
-#include "buffer.h"
-#include "descripor.h"
 #include "vk_core.h"
+#include "util.h"
+#include "descripor.h"
+#include "buffer.h"
 
 struct Vertex {
-  vec2 pos;
-  vec3 color;
+    vec2 pos;
+    vec3 color;
 };
 
 struct UniformSet {
-  mat4 model;
-  mat4 view;
-  mat4 proj;
-};
-
-struct RenderPassGroup {
-  VkRenderPass rendp;
-  uint32_t frame_buff_count;
-  VkFramebuffer *frame_buffs;
-};
-
-struct PipeGroup {
-  VkPipelineLayout pipe_layout;
-  VkPipeline pipe;
+    mat4 model;
+    mat4 view;
+    mat4 proj;
 };
 
 #ifndef RENDER_H
 #define RENDER_H
 
-struct RenderPassGroup create_rendp(VkDevice dev, VkSurfaceFormatKHR form);
-struct PipeGroup create_pipe(VkDevice dev, VkExtent2D extent,
-                             VkRenderPass rendp);
-void create_frame_buffs(struct RenderPassGroup *g_rendp, VkDevice dev,
-                        uint32_t img_count, VkImageView *img_views,
-                        VkExtent2D extent);
-void render_frame(VkDevice dev, VkSwapchainKHR swap,
-                  struct RenderMgmtGroup *rend_mgmt, VkQueue q_graph,
-                  VkQueue q_pres);
-void destroy_render(struct DevGroup *dev, struct PipeGroup *pipe,
-                    struct RenderPassGroup *rendp);
+VCW_Renderpass create_rendp(VCW_Device vcw_dev, VCW_Surface surf);
+
+VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_DescriptorPool vcw_desc, VkExtent2D extent);
+
+void create_frame_bufs(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, VCW_Renderpass *vcw_rendp, VkExtent2D extent);
+
+VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain swap, uint32_t max_frames_in_flight);
+
+void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group);
+
+VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group);
+
+VCW_RenderResult new_render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group);
+
+void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group);
+
+void destroy_render(VCW_Device *dev, VCW_Pipeline *pipe, VCW_Renderpass *rendp);
 
 #endif

@@ -1,13 +1,11 @@
 #include "buffer.h"
 
-uint32_t find_mem_type(uint32_t mem_type, VkMemoryPropertyFlags prop,
-                       VkPhysicalDevice phy_dev) {
+uint32_t find_mem_type(VCW_PhysicalDevice vcw_phy_dev, uint32_t mem_type, VkMemoryPropertyFlags prop) {
     VkPhysicalDeviceMemoryProperties mem_prop;
-    vkGetPhysicalDeviceMemoryProperties(phy_dev, &mem_prop);
+    vkGetPhysicalDeviceMemoryProperties(vcw_phy_dev.dev, &mem_prop);
 
     for (uint32_t i = 0; i < mem_prop.memoryTypeCount; i++) {
-        if ((mem_type & (1 << i)) &&
-            (mem_prop.memoryTypes[i].propertyFlags & prop) == prop) {
+        if ((mem_type & (1 << i)) && (mem_prop.memoryTypes[i].propertyFlags & prop) == prop) {
             return i;
         }
     }
@@ -15,30 +13,32 @@ uint32_t find_mem_type(uint32_t mem_type, VkMemoryPropertyFlags prop,
     return 0;
 }
 
-struct BufferSet create_buffer_info(size_t size, uint32_t alignment,
-                                    VkBufferUsageFlagBits usage,
-                                    VkSharingMode sharing) {
-    return (struct BufferSet) {size, alignment, usage, sharing, 0, NULL, 0, 0, 0};
+VCW_Buffer create_buffer(VCW_Device vcw_dev, size_t size, uint32_t alignment,
+                         VkBufferUsageFlagBits usage, VkSharingMode sharing) {
+    VCW_Buffer buf;
+
+    buf.size = size;
+    buf.alignment = alignment;
+    buf.usage = usage;
+    buf.sharing = sharing;
+
+    buf.buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buf.buf_info.size = buf.size;
+    buf.buf_info.usage = buf.usage;
+    buf.buf_info.sharingMode = buf.sharing;
+    buf.buf_info.flags = 0;
+    buf.buf_info.pNext = NULL;
+
+    vkCreateBuffer(vcw_dev.dev, &buf.buf_info, NULL, &buf.buf);
+
+    return buf;
 }
 
-void init_buffer(VkDevice dev, struct BufferSet *buf) {
-    buf->buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buf->buf_info.size = buf->size;
-    buf->buf_info.usage = buf->usage;
-    buf->buf_info.sharingMode = buf->sharing;
-    buf->buf_info.pNext = NULL;
+void allocate_memory(VCW_Device vcw_dev, VCW_PhysicalDevice vcw_phy_dev, VCW_Buffer *buf) {
+    vkGetBufferMemoryRequirements(vcw_dev.dev, buf->buf, &buf->mem_req);
 
-    vkCreateBuffer(dev, &buf->buf_info, NULL, &buf->buf);
-};
-
-void allocate_memory(VkDevice dev, VkPhysicalDevice phy_dev,
-                     struct BufferSet *buf) {
-    vkGetBufferMemoryRequirements(dev, buf->buf, &buf->mem_req);
-
-    buf->mem_type = find_mem_type(buf->mem_req.memoryTypeBits,
-                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                  phy_dev);
+    buf->mem_type = find_mem_type(vcw_phy_dev, buf->mem_req.memoryTypeBits,
+                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     printf("found memory type index: %x\n", buf->mem_type);
 
@@ -49,14 +49,13 @@ void allocate_memory(VkDevice dev, VkPhysicalDevice phy_dev,
     alloc_info.memoryTypeIndex = buf->mem_type;
     alloc_info.pNext = NULL;
 
-    vkAllocateMemory(dev, &alloc_info, NULL, &buf->mem);
-    vkBindBufferMemory(dev, buf->buf, buf->mem, 0);
+    vkAllocateMemory(vcw_dev.dev, &alloc_info, NULL, &buf->mem);
+    vkBindBufferMemory(vcw_dev.dev, buf->buf, buf->mem, 0);
 }
 
-void init_mem(VkDevice dev, struct BufferSet *buf,
-              void *data) {
+void init_mem(VCW_Device vcw_dev, VCW_Buffer *buf, void *data) {
     void *empty_data;
-    vkMapMemory(dev, buf->mem, 0, buf->buf_info.size, 0, &empty_data);
+    vkMapMemory(vcw_dev.dev, buf->mem, 0, buf->buf_info.size, 0, &empty_data);
     memcpy(empty_data, data, buf->size);
-    vkUnmapMemory(dev, buf->mem);
+    vkUnmapMemory(vcw_dev.dev, buf->mem);
 }

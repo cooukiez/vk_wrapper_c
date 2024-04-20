@@ -1,38 +1,24 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "vulkan/vulkan.h"
+
+#include "type_def.h"
 
 #ifndef BUFFER_H
 #define BUFFER_H
 
 struct Vertex;
 
-struct BufferSet {
-  size_t size;
-  uint32_t alignment;
-  VkBufferUsageFlagBits usage;
-  VkSharingMode sharing;
+uint32_t find_mem_type(VCW_PhysicalDevice vcw_phy_dev, uint32_t mem_type, VkMemoryPropertyFlags prop);
 
-  VkBufferCreateInfo buf_info;
-  VkBuffer buf;
+VCW_Buffer create_buffer(VCW_Device vcw_dev, size_t size, uint32_t alignment,
+                         VkBufferUsageFlagBits usage, VkSharingMode sharing);
 
-  VkMemoryRequirements mem_req;
-  uint32_t mem_type;
-  VkDeviceMemory mem;
-};
+void allocate_memory(VCW_Device vcw_dev, VCW_PhysicalDevice phy_dev,
+                     VCW_Buffer *buf);
 
-uint32_t find_mem_type(uint32_t mem_type, VkMemoryPropertyFlags prop,
-                       VkPhysicalDevice phy_dev);
-
-struct BufferSet create_buffer_info(size_t size, uint32_t alignment,
-                                    VkBufferUsageFlagBits usage,
-                                    VkSharingMode sharing);
-void init_buffer(VkDevice dev, struct BufferSet *buf);
-
-void allocate_memory(VkDevice dev, VkPhysicalDevice phy_dev,
-                     struct BufferSet *buf);
-void init_mem(VkDevice dev, struct BufferSet *buf,
-                   void *data);
+void init_mem(VCW_Device vcw_dev, VCW_Buffer *buf, void *data);
 
 #endif

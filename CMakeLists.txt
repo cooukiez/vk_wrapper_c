@@ -5,6 +5,10 @@ project(vulkan C)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+
 file(TO_CMAKE_PATH $ENV{GLFW_64} GLFW_DIR)
 file(TO_CMAKE_PATH $ENV{VULKAN_SDK} VULKAN_DIR)
 file(TO_CMAKE_PATH $ENV{GLM_C} GLM_DIR)
@@ -14,7 +18,9 @@ add_executable(vk_wrapper
 	vk_core.c
 	render.c
 	descriptor.c
-	buffer.c)
+	buffer.c
+	util.c
+)
 
 if(UNIX AND NOT APPLE)
 	#[[
