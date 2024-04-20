@@ -20,6 +20,10 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
 
+#set(RENDERDOC_SDK_PATH "C:/Program Files/RenderDoc")
+#include_directories(${RENDERDOC_SDK_PATH})
+#target_link_libraries(vk_wrapper "${RENDERDOC_SDK_PATH}/renderdoc.dll")
+
 add_custom_target(vert.spv
 	COMMAND glslangValidator --quiet -V ${CMAKE_SOURCE_DIR}/shader.vert -o ${CMAKE_BINARY_DIR}/vert.spv)
 

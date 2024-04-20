@@ -10,6 +10,8 @@ int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
     fflush(stdout);
 
+    //load_rdoc();
+
     VkApplicationInfo app_info = create_app_info();
     VkInstance inst = create_inst(&app_info);
     VCW_PhysicalDevice *phy_dev = get_phy_dev(inst);
@@ -19,7 +21,7 @@ int main(int argc, char **argv) {
 
     VCW_VkCoreGroup vcw_core = {phy_dev, dev, surf, swap};
 
-    VCW_CommandPool cmd_pool = create_cmd_pool(*dev, *swap);
+    VCW_CommandPool cmd_pool = create_cmd_pool(*dev, 2);
     VCW_Renderpass rendp = create_rendp(*dev, *surf);
     create_frame_bufs(*dev, *swap, &rendp, swap->extent);
 
@@ -91,14 +93,17 @@ int main(int argc, char **argv) {
 
     VCW_PipelineGroup vcw_pipe_group = {&cmd_pool, &rendp, &pipe, &desc_group, &sync, &vert_buf, &index_buf};
 
-    prepare_rendering(vcw_core, vcw_pipe_group);
     printf("\n");
     while (!glfwWindowShouldClose(surf->window)) {
         glfwPollEvents();
+        if (surf->resized == 1) {
+            printf("recreating swapchain.\n");
+            recreate_swap(vcw_core, vcw_pipe_group);
+        }
         //
         // submit
         //
-        new_render(vcw_core, vcw_pipe_group);
+        render(vcw_core, vcw_pipe_group);
     }
     vkDeviceWaitIdle(dev->dev);
     printf("command buffers finished.\n");

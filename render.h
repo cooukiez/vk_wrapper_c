@@ -27,16 +27,14 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
 
 void create_frame_bufs(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, VCW_Renderpass *vcw_rendp, VkExtent2D extent);
 
-VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain swap, uint32_t max_frames_in_flight);
+VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, uint32_t max_frames_in_flight);
 
 void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group);
 
 VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group);
 
-VCW_RenderResult new_render(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group);
-
 void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group);
 
-void destroy_render(VCW_Device *dev, VCW_Pipeline *pipe, VCW_Renderpass *rendp);
+void destroy_render(VCW_Device vcw_dev, VCW_Pipeline vcw_pipe, VCW_Renderpass vcw_rendp, VCW_Sync vcw_sync);
 
 #endif

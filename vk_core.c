@@ -296,7 +296,7 @@ VCW_Surface *create_surf(VkInstance inst, VCW_PhysicalDevice vcw_phy_dev, VCW_De
     //
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // TODO: support dynamic window size
-    VCW_SURF->window = glfwCreateWindow(dim.width, dim.height, "", NULL, NULL);
+    VCW_SURF->window = glfwCreateWindow(dim.width, dim.height, "Vk Wrapper", NULL, NULL);
     VCW_SURF->window_extent = dim;
     VCW_SURF->resized = 0;
     printf("window created.\n");
@@ -310,7 +310,7 @@ VCW_Surface *create_surf(VkInstance inst, VCW_PhysicalDevice vcw_phy_dev, VCW_De
     //
     glfwSetCursorPosCallback(VCW_SURF->window, cursor_position_callback);
     printf("cursor position callback created.\n");
-    // glfwSetFramebufferSizeCallback(VCW_SURF->window, framebuffer_resize_callback);
+    glfwSetFramebufferSizeCallback(VCW_SURF->window, framebuffer_resize_callback);
     printf("framebuffer resize callback created.\n");
     //
     // verify surface support
@@ -357,7 +357,7 @@ VCW_Surface *create_surf(VkInstance inst, VCW_PhysicalDevice vcw_phy_dev, VCW_De
     return VCW_SURF;
 }
 
-VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface surf, VkSwapchainKHR old) {
+VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface vcw_surf, VkSwapchainKHR old) {
     VCW_SWAP = malloc(sizeof(VCW_Swapchain));
     //
     // create swapchain
@@ -366,11 +366,11 @@ VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface surf, VkSwapchainKHR 
     swap_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swap_info.pNext = NULL;
     swap_info.flags = 0;
-    swap_info.surface = surf.surf;
-    swap_info.minImageCount = surf.caps.minImageCount + 1;
-    swap_info.imageFormat = surf.forms[0].format;
-    swap_info.imageColorSpace = surf.forms[0].colorSpace;
-    VCW_SWAP->extent = surf.extent_suitable ? surf.caps.currentExtent : surf.actual_extent;
+    swap_info.surface = vcw_surf.surf;
+    swap_info.minImageCount = vcw_surf.caps.minImageCount + 1;
+    swap_info.imageFormat = vcw_surf.forms[0].format;
+    swap_info.imageColorSpace = vcw_surf.forms[0].colorSpace;
+    VCW_SWAP->extent = vcw_surf.extent_suitable ? vcw_surf.caps.currentExtent : vcw_surf.actual_extent;
     swap_info.imageExtent = VCW_SWAP->extent;
     swap_info.imageArrayLayers = 1;
     swap_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -378,9 +378,9 @@ VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface surf, VkSwapchainKHR 
     swap_info.queueFamilyIndexCount = vcw_dev.single_queue ? 0 : 2;
     uint32_t qf_indices[2] = {0, 1};
     swap_info.pQueueFamilyIndices = vcw_dev.single_queue ? NULL : qf_indices;
-    swap_info.preTransform = surf.caps.currentTransform;
+    swap_info.preTransform = vcw_surf.caps.currentTransform;
     swap_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swap_info.presentMode = surf.mailbox_mode_supported ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
+    swap_info.presentMode = vcw_surf.mailbox_mode_supported ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
     swap_info.clipped = VK_TRUE;
     swap_info.oldSwapchain = old;
 
@@ -409,7 +409,7 @@ VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface surf, VkSwapchainKHR 
         img_view_infos[i].flags = 0;
         img_view_infos[i].image = VCW_SWAP->imgs[i];
         img_view_infos[i].viewType = VK_IMAGE_VIEW_TYPE_2D;
-        img_view_infos[i].format = surf.forms[0].format;
+        img_view_infos[i].format = vcw_surf.forms[0].format;
         img_view_infos[i].components = DEFAULT_COMPONENT_MAPPING;
         img_view_infos[i].subresourceRange = subres;
         vkCreateImageView(vcw_dev.dev, &img_view_infos[i], NULL, &VCW_SWAP->img_views[i]);
@@ -419,7 +419,7 @@ VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface surf, VkSwapchainKHR 
     return VCW_SWAP;
 }
 
-VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, VCW_Swapchain vcw_swap) {
+VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, uint32_t cmd_buf_count) {
     VCW_CommandPool vcw_cmd;
     //
     // create command pool
@@ -440,7 +440,7 @@ VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, VCW_Swapchain vcw_swap) {
     cmd_alloc_info.pNext = NULL;
     cmd_alloc_info.commandPool = vcw_cmd.cmd_pool;
     cmd_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    vcw_cmd.cmd_buf_count = vcw_swap.img_count;
+    vcw_cmd.cmd_buf_count = cmd_buf_count;
     cmd_alloc_info.commandBufferCount = vcw_cmd.cmd_buf_count;
 
     vcw_cmd.cmd_bufs = malloc(vcw_cmd.cmd_buf_count * sizeof(VkCommandBuffer));

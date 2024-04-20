@@ -26,7 +26,7 @@ VCW_Surface *create_surf(VkInstance inst, VCW_PhysicalDevice vcw_phy_dev, VCW_De
 
 VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface surf, VkSwapchainKHR old);
 
-VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, VCW_Swapchain vcw_swap);
+VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, uint32_t cmd_buf_count);
 
 void clean_up_swap(VCW_Device vcw_dev, VCW_Swapchain swap);
 
