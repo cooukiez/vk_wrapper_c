@@ -399,6 +399,8 @@ VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, uint32_t max_fr
     return vcw_sync;
 }
 
+//test
+
 void record_cmd_buf(VCW_VkCoreGroup vcw_core, VCW_PipelineGroup vcw_pipe_group, VkCommandBuffer cmd_buf,
                     uint32_t img_index) {
     //
