@@ -427,7 +427,7 @@ void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
     rendp_area.offset.x = 0;
     rendp_area.offset.y = 0;
     rendp_area.extent = vcw_swap.extent;
-    VkClearValue clear_val = {0.5f, 0.0f, 0.5f, 0.0f};
+    VkClearValue clear_val = {0.0f, 0.0f, 0.0f, 0.0f};
     for (uint32_t i = 0; i < vcw_cmd.cmd_buf_count; i++) {
         vkResetCommandBuffer(vcw_cmd.cmd_bufs[i], 0);
         //

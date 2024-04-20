@@ -26,9 +26,9 @@ typedef struct VCW_Device {
 typedef struct VCW_Surface {
     GLFWwindow *window;
 
-    // STORE NEW RESIZE
     VkExtent2D window_extent;
     char resized;
+    vec2 cursor_position;
 
     VkSurfaceKHR surf;
     VkBool32 supported;
