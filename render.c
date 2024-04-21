@@ -288,6 +288,13 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     }
     printf("color blend state info filled.\n");
     //
+    // create push constant range
+    //
+    VkPushConstantRange push_const_range;
+    push_const_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    push_const_range.offset = 0;
+    push_const_range.size = sizeof(VCW_PushConstant);
+    //
     // create pipeline layout
     //
     VkPipelineLayoutCreateInfo pipe_layout_info;
@@ -296,8 +303,8 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     pipe_layout_info.flags = 0;
     pipe_layout_info.setLayoutCount = vcw_desc.set_count;
     pipe_layout_info.pSetLayouts = vcw_desc.layouts;
-    pipe_layout_info.pushConstantRangeCount = 0;
-    pipe_layout_info.pPushConstantRanges = NULL;
+    pipe_layout_info.pushConstantRangeCount = 1;
+    pipe_layout_info.pPushConstantRanges = &push_const_range;
 
     vkCreatePipelineLayout(vcw_dev.dev, &pipe_layout_info, NULL, &vcw_pipe.layout);
     printf("pipeline layout created.\n");
@@ -483,6 +490,9 @@ void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
 
         vkCmdBindDescriptorSets(vcw_cmd.cmd_bufs[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.layout, 0,
                                 vcw_desc.set_count, vcw_desc.sets, 0, NULL);
+        vkCmdPushConstants(vcw_cmd.cmd_bufs[i], vcw_pipe.layout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                           sizeof(VCW_PushConstant), vcw_app.cpu_push_const);
         vkCmdDrawIndexed(vcw_cmd.cmd_bufs[i], vcw_app.index_count, 1, 0, 0, 0);
         vkCmdEndRenderPass(vcw_cmd.cmd_bufs[i]);
         vkEndCommandBuffer(vcw_cmd.cmd_bufs[i]);
@@ -526,7 +536,7 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
     vcw_sync->img_fens[img_index] = vcw_sync->fens[cur_frame];
 
     VCW_Buffer unif_buf = vcw_app.unif_bufs[cur_frame];
-    memcpy(unif_buf.cpu_mem_pointer, vcw_app.cpu_side_unif, unif_buf.size);
+    memcpy(unif_buf.cpu_mem_pointer, vcw_app.cpu_unif, unif_buf.size);
 
     VkSubmitInfo sub_info;
     sub_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

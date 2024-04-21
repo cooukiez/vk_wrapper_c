@@ -58,11 +58,7 @@ int main(int argc, char **argv) {
     // create uniform buffer
     //
     VCW_Uniform unif;
-    glm_mat4_zero(unif.model);
-    glm_mat4_zero(unif.view);
-    glm_mat4_zero(unif.proj);
-    glm_vec2_zero(unif.res);
-    unif.time = 0;
+    glm_mat4_zero(unif.data);
 
     VCW_Buffer *unif_bufs = malloc(swap->img_count * sizeof(VCW_Buffer));
     for (uint32_t i = 0; i < sync.max_frames; i++) {
@@ -98,6 +94,11 @@ int main(int argc, char **argv) {
 
     VCW_Pipeline pipe = create_pipe(*dev, rendp, desc_group, swap->extent);
 
+    VCW_PushConstant push_const;
+    glm_mat4_zero(push_const.view);
+    glm_vec2_zero(push_const.res);
+    push_const.time = 0;
+
     VCW_App vcw_app;
     vcw_app.cmd = &cmd_pool;
     vcw_app.rendp = &rendp;
@@ -107,7 +108,8 @@ int main(int argc, char **argv) {
     vcw_app.vert_buf = &vert_buf;
     vcw_app.index_buf = &index_buf;
     vcw_app.index_count = 6;
-    vcw_app.cpu_side_unif = &unif;
+    vcw_app.cpu_unif = &unif;
+    vcw_app.cpu_push_const = &push_const;
     vcw_app.unif_bufs = unif_bufs;
     vcw_app.unif_buf_count = sync.max_frames;
     vcw_app.frame_count = 0;
@@ -121,8 +123,8 @@ int main(int argc, char **argv) {
         //
         render(vcw_core, vcw_app);
         vcw_app.frame_count += 1;
-        vcw_app.cpu_side_unif->time += 1;
-        glm_vec2_copy((vec2){swap->extent.width, swap->extent.height}, vcw_app.cpu_side_unif->res);
+        vcw_app.cpu_push_const->time += 1;
+        glm_vec2_copy((vec2){swap->extent.width, swap->extent.height}, vcw_app.cpu_push_const->res);
 
         vec2 mouse_rot;
         glm_vec2_scale(surf->cursor_delta, 0.05f, mouse_rot);
@@ -142,13 +144,13 @@ int main(int argc, char **argv) {
         mat4 view = GLM_MAT4_IDENTITY_INIT;
         glm_translate(view, (vec3){0.0f, 0.0f, 0.0f});
         mat4 projection = GLM_MAT4_IDENTITY_INIT;
-        glm_perspective((unif.res[0] / unif.res[1]), 45.0f, 0.1f, 200.0f, projection);
+        glm_perspective((push_const.res[0] / push_const.res[1]), 45.0f, 0.1f, 200.0f, projection);
         mat4 look_at = GLM_MAT4_IDENTITY_INIT;
         vec4 cam_up = {0.0f, 1.0f, 0.0f, 0.0f};
         glm_lookat(cam_pos, cam_front, cam_up, look_at);
 
-        glm_mat4_mul(projection, look_at, unif.view);
-        glm_mat4_mul(unif.view, view, unif.view);
+        glm_mat4_mul(projection, look_at, push_const.view);
+        glm_mat4_mul(push_const.view, view, push_const.view);
     }
     vkDeviceWaitIdle(dev->dev);
     printf("command buffers finished.\n");

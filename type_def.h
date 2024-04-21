@@ -128,13 +128,15 @@ typedef struct VCW_Buffer {
 //
 // pipeline group
 //
-typedef struct VCW_Uniform {
-    mat4 model;
+typedef struct VCW_PushConstant {
     mat4 view;
-    mat4 proj;
 
     vec2 res;
     uint32_t time;
+} VCW_PushConstant;
+
+typedef struct VCW_Uniform {
+    mat4 data;
 } VCW_Uniform;
 
 typedef struct VCW_App {
@@ -148,7 +150,9 @@ typedef struct VCW_App {
     VCW_Buffer *index_buf;
     uint32_t index_count;
 
-    VCW_Uniform *cpu_side_unif;
+    VCW_Uniform *cpu_unif;
+    VCW_PushConstant *cpu_push_const;
+
     VCW_Buffer *unif_bufs;
     uint32_t unif_buf_count;
 
