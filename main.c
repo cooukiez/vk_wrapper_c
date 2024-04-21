@@ -115,7 +115,6 @@ int main(int argc, char **argv) {
     vcw_app.frame_count = 0;
 
     printf("\n");
-    prepare_rendering(vcw_core, vcw_app);
     while (!glfwWindowShouldClose(surf->window)) {
         glfwPollEvents();
         //

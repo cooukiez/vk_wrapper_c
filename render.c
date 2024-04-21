@@ -413,96 +413,8 @@ VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, uint32_t max_fr
     return vcw_sync;
 }
 
-void prerecord_cmd_pool(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
-    //
-    // unpack group arguments
-    //
-    VCW_Device vcw_dev = *vcw_core.dev;
-    VCW_Swapchain vcw_swap = *vcw_core.swap;
-    VCW_CommandPool vcw_cmd = *vcw_app.cmd;
-    VCW_Renderpass vcw_rendp = *vcw_app.rendp;
-    VCW_Pipeline vcw_pipe = *vcw_app.pipe;
-    VCW_DescriptorPool vcw_desc = *vcw_app.desc;
-    VCW_Buffer vert_buf = *vcw_app.vert_buf;
-    VCW_Buffer index_buf = *vcw_app.index_buf;
-    //
-    // render preparation
-    //
-    VkCommandBufferBeginInfo *cmd_begin_infos = malloc(vcw_swap.img_count * sizeof(VkCommandBufferBeginInfo));
-    VkRenderPassBeginInfo *rendp_begin_infos = malloc(vcw_swap.img_count * sizeof(VkRenderPassBeginInfo));
-    VkRect2D rendp_area;
-    rendp_area.offset.x = 0;
-    rendp_area.offset.y = 0;
-    rendp_area.extent = vcw_swap.extent;
-    VkClearValue clear_val = {0.0f, 0.0f, 0.0f, 0.0f};
-    for (uint32_t i = 0; i < vcw_cmd.cmd_buf_count; i++) {
-        vkResetCommandBuffer(vcw_cmd.cmd_bufs[i], 0);
-        //
-        // Begin command buffer
-        //
-        cmd_begin_infos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        cmd_begin_infos[i].pNext = NULL;
-        cmd_begin_infos[i].flags = 0;
-        cmd_begin_infos[i].pInheritanceInfo = NULL;
-        printf("command buffer begin info %d filled.\n", i);
-        //
-        // Begin renderpass
-        //
-        rendp_begin_infos[i].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rendp_begin_infos[i].pNext = NULL;
-        rendp_begin_infos[i].renderPass = vcw_rendp.rendp;
-        rendp_begin_infos[i].framebuffer = vcw_rendp.frame_bufs[i];
-        rendp_begin_infos[i].renderArea = rendp_area;
-        rendp_begin_infos[i].clearValueCount = 1;
-        rendp_begin_infos[i].pClearValues = &clear_val;
-        printf("render pass begin info %d filled.\n", i);
-
-        vkBeginCommandBuffer(vcw_cmd.cmd_bufs[i], &cmd_begin_infos[i]);
-        vkCmdBeginRenderPass(vcw_cmd.cmd_bufs[i], &(rendp_begin_infos[i]), VK_SUBPASS_CONTENTS_INLINE);
-
-        vkCmdBindPipeline(vcw_cmd.cmd_bufs[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.pipe);
-        //
-        // fill viewport
-        //
-        VkViewport viewport;
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = (float) vcw_swap.extent.width;
-        viewport.height = (float) vcw_swap.extent.height;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        printf("viewport filled.\n");
-        vkCmdSetViewport(vcw_cmd.cmd_bufs[i], 0, 1, &viewport);
-        //
-        // fill scissor
-        //
-        VkRect2D scissor;
-        VkOffset2D sci_offset;
-        sci_offset.x = 0;
-        sci_offset.y = 0;
-        scissor.offset = sci_offset;
-        scissor.extent = vcw_swap.extent;
-        printf("scissor filled.\n");
-        vkCmdSetScissor(vcw_cmd.cmd_bufs[i], 0, 1, &scissor);
-
-        vkCmdBindVertexBuffers(vcw_cmd.cmd_bufs[i], 0, 1, &vert_buf.buf, &(VkDeviceSize) {0});
-        vkCmdBindIndexBuffer(vcw_cmd.cmd_bufs[i], index_buf.buf, 0, VK_INDEX_TYPE_UINT32);
-
-        vkCmdBindDescriptorSets(vcw_cmd.cmd_bufs[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.layout, 0,
-                                vcw_desc.set_count, vcw_desc.sets, 0, NULL);
-        vkCmdPushConstants(vcw_cmd.cmd_bufs[i], vcw_pipe.layout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                           sizeof(VCW_PushConstant), vcw_app.cpu_push_const);
-        vkCmdDrawIndexed(vcw_cmd.cmd_bufs[i], vcw_app.index_count, 1, 0, 0, 0);
-        vkCmdEndRenderPass(vcw_cmd.cmd_bufs[i]);
-        vkEndCommandBuffer(vcw_cmd.cmd_bufs[i]);
-
-        printf("command buffer drawing recorded.\n");
-    }
-}
-
 void record_cmd_buf(VCW_VkCoreGroup vcw_core, VCW_App vcw_app, VkCommandBuffer cmd_buf,
-                    uint32_t img_index) {
+                    uint32_t img_index, uint32_t cur_frame) {
     //
     // unpack arguments
     //
@@ -530,7 +442,7 @@ void record_cmd_buf(VCW_VkCoreGroup vcw_core, VCW_App vcw_app, VkCommandBuffer c
     rendp_area.offset.x = 0;
     rendp_area.offset.y = 0;
     rendp_area.extent = vcw_swap.extent;
-    VkClearValue clear_val = {0.5f, 0.0f, 0.5f, 0.0f};
+    VkClearValue clear_val = {0.0f, 0.0f, 0.0f, 0.0f};
 
     VkRenderPassBeginInfo rendp_begin_info;
     rendp_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -568,9 +480,16 @@ void record_cmd_buf(VCW_VkCoreGroup vcw_core, VCW_App vcw_app, VkCommandBuffer c
 
     vkCmdBindVertexBuffers(cmd_buf, 0, 1, &vert_buf.buf, &(VkDeviceSize) {0});
     vkCmdBindIndexBuffer(cmd_buf, index_buf.buf, 0, VK_INDEX_TYPE_UINT32);
+
+    VCW_Buffer unif_buf = vcw_app.unif_bufs[cur_frame];
+    memcpy(unif_buf.cpu_mem_pointer, vcw_app.cpu_unif, unif_buf.size);
+
     vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.layout, 0, vcw_desc.set_count,
                             vcw_desc.sets, 0, NULL);
-    vkCmdDrawIndexed(cmd_buf, 6, 1, 0, 0, 0);
+    vkCmdPushConstants(cmd_buf, vcw_pipe.layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                       sizeof(VCW_PushConstant), vcw_app.cpu_push_const);
+
+    vkCmdDrawIndexed(cmd_buf, vcw_app.index_count, 1, 0, 0, 0);
     vkCmdEndRenderPass(cmd_buf);
     vkEndCommandBuffer(cmd_buf);
 }
@@ -609,8 +528,8 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
 
     vcw_sync->img_fens[img_index] = vcw_sync->fens[cur_frame];
 
-    VCW_Buffer unif_buf = vcw_app.unif_bufs[cur_frame];
-    memcpy(unif_buf.cpu_mem_pointer, vcw_app.cpu_unif, unif_buf.size);
+    vkResetCommandBuffer(vcw_cmd->cmd_bufs[img_index], 0);
+    record_cmd_buf(vcw_core, vcw_app, vcw_cmd->cmd_bufs[img_index], img_index, cur_frame);
 
     VkSubmitInfo sub_info;
     sub_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -700,8 +619,6 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
 
     *vcw_swap = *create_swap(vcw_dev, *vcw_surf, NULL);
     create_frame_bufs(vcw_dev, *vcw_swap, vcw_rendp, vcw_swap->extent);
-
-    prepare_rendering(vcw_core, vcw_app);
 }
 
 void clean_up_frame_bufs(VCW_Device vcw_dev, VCW_Renderpass vcw_rendp) {
