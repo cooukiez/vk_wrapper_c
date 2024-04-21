@@ -7,8 +7,8 @@
 
 
 typedef struct Vertex {
-    vec2 pos;
-    vec3 color;
+    vec3 pos;
+    vec2 uv;
 } Vertex;
 
 #ifndef RENDER_H

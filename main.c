@@ -32,7 +32,9 @@ int main(int argc, char **argv) {
     //
     // create index buffer
     //
-    uint32_t indices[] = {0, 1, 2, 0, 3, 1};
+    // uint32_t indices[] = {0, 1, 2, 0, 3, 1};
+    uint32_t indices[] = {0, 1, 3, 3, 1, 2, 4, 5, 7, 7, 5, 6, 8, 9, 11, 11, 9, 10, 12, 13, 15, 15, 13, 14, 16, 17, 19,
+                          19, 17, 18, 20, 21, 23, 23, 21, 22,};
     VCW_Buffer index_buf = create_buffer(*dev, sizeof(indices), sizeof(uint32_t),
                                          VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
 
@@ -43,9 +45,39 @@ int main(int argc, char **argv) {
     //
     // create vertex buffer
     //
-    struct Vertex vertices[] = {{{0.0f,  -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                {{0.5f,  0.5f},  {0.0f, 1.0f, 0.0f}},
-                                {{-0.5f, 0.5f},  {0.0f, 0.0f, 1.0f}}};
+    /*
+    Vertex vertices[] = {{{0.0f,  -0.5f, 1.0f}, {1.0f, 0.0f}},
+                         {{0.5f,  0.5f,  1.0f}, {0.0f, 1.0f}},
+                         {{-0.5f, 0.5f,  1.0f}, {0.0f, 0.0f}}};
+    */
+
+    Vertex vertices[] = {
+            {{-0.5f, 0.5f,  -0.5f}, {0.0f, 0.0f}},
+            {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+            {{0.5f,  -0.5f, -0.5f}, {1.0f, 1.0f}},
+            {{0.5f,  0.5f,  -0.5f}, {1.0f, 0.0f}},
+            {{-0.5f, 0.5f,  0.5f},  {0.0f, 0.0f}},
+            {{-0.5f, -0.5f, 0.5f},  {0.0f, 1.0f}},
+            {{0.5f,  -0.5f, 0.5f},  {1.0f, 1.0f}},
+            {{0.5f,  0.5f,  0.5f},  {1.0f, 0.0f}},
+            {{0.5f,  0.5f,  -0.5f}, {0.0f, 0.0f}},
+            {{0.5f,  -0.5f, -0.5f}, {0.0f, 1.0f}},
+            {{0.5f,  -0.5f, 0.5f},  {1.0f, 1.0f}},
+            {{0.5f,  0.5f,  0.5f},  {1.0f, 0.0f}},
+            {{-0.5f, 0.5f,  -0.5f}, {0.0f, 0.0f}},
+            {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+            {{-0.5f, -0.5f, 0.5f},  {1.0f, 1.0f}},
+            {{-0.5f, 0.5f,  0.5f},  {1.0f, 0.0f}},
+            {{-0.5f, 0.5f,  0.5f},  {0.0f, 0.0f}},
+            {{-0.5f, 0.5f,  -0.5f}, {0.0f, 1.0f}},
+            {{0.5f,  0.5f,  -0.5f}, {1.0f, 1.0f}},
+            {{0.5f,  0.5f,  0.5f},  {1.0f, 0.0f}},
+            {{-0.5f, -0.5f, 0.5f},  {0.0f, 0.0f}},
+            {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+            {{0.5f,  -0.5f, -0.5f}, {1.0f, 1.0f}},
+            {{0.5f,  -0.5f, 0.5f},  {1.0f, 0.0f}}
+    };
+
 
     VCW_Buffer vert_buf = create_buffer(*dev, sizeof(vertices), sizeof(struct Vertex),
                                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
@@ -107,7 +139,7 @@ int main(int argc, char **argv) {
     vcw_app.sync = &sync;
     vcw_app.vert_buf = &vert_buf;
     vcw_app.index_buf = &index_buf;
-    vcw_app.index_count = 6;
+    vcw_app.index_count = 36;
     vcw_app.cpu_unif = &unif;
     vcw_app.cpu_push_const = &push_const;
     vcw_app.unif_bufs = unif_bufs;
@@ -123,39 +155,54 @@ int main(int argc, char **argv) {
         render(vcw_core, vcw_app);
         vcw_app.frame_count += 1;
         vcw_app.cpu_push_const->time += 1;
-        glm_vec2_copy((vec2){swap->extent.width, swap->extent.height}, vcw_app.cpu_push_const->res);
+        glm_vec2_copy((vec2) {swap->extent.width, swap->extent.height}, vcw_app.cpu_push_const->res);
 
-        vec2 mouse_rot;
-        glm_vec2_scale(surf->cursor_delta, 0.05f, mouse_rot);
-        mouse_rot[1] = fminf(fmaxf(mouse_rot[1], -89.0f), 89.0f);
+        float sensitivity = 0.1f;
+        float yaw = glm_rad((float)(surf->cursor_position[0]) * sensitivity);
+        float pitch = glm_rad((float)(-surf->cursor_position[1]) * sensitivity);
 
-        // Update camera
         vec3 cam_front;
-        vec3 cam_pos = {0.0f, -10.0f, 0.0f};
-        float yaw = glm_rad(mouse_rot[0]);
-        float pitch = glm_rad(mouse_rot[1]);
-
         cam_front[0] = cosf(yaw) * cosf(pitch);
         cam_front[1] = sinf(pitch);
         cam_front[2] = sinf(yaw) * cosf(pitch);
+        glm_vec3_normalize(cam_front);
 
+        vec3 cam_pos = {0.0f, 0.0f, -1.0f};
         glm_vec3_add(cam_pos, cam_front, cam_front);
-        mat4 view = GLM_MAT4_IDENTITY_INIT;
-        glm_translate(view, (vec3){0.0f, 0.0f, 0.0f});
-        mat4 projection = GLM_MAT4_IDENTITY_INIT;
-        glm_perspective((push_const.res[0] / push_const.res[1]), 45.0f, 0.1f, 200.0f, projection);
-        mat4 look_at = GLM_MAT4_IDENTITY_INIT;
+        mat4 view;
+        glm_translate(view, (vec3) {0.0f, 0.0f, 0.0f});
+        mat4 projection;
+        glm_perspective(push_const.res[0] / push_const.res[1], glm_rad(45.0f), 0.1f, 200.0f, projection);
+        mat4 look_at;
         vec4 cam_up = {0.0f, 1.0f, 0.0f, 0.0f};
-        glm_lookat(cam_pos, cam_front, cam_up, look_at);
+        glm_lookat(cam_pos, cam_front, (vec3){0.0f, 1.0f, 0.0f}, look_at);
 
         glm_mat4_mul(projection, look_at, push_const.view);
-        glm_mat4_mul(push_const.view, view, push_const.view);
+        //glm_mat4_mul(push_const.view, view, push_const.view);
+
+        /*
 
         float angle = glm_rad((float) (push_const.time % 360));
 
-        mat4 rot_mat;
-        glm_rotate_make(rot_mat, angle, (vec3){0.0f, 0.0f, 1.0f});
-        glm_mat4_copy(rot_mat, push_const.view);
+        vec3 cameraPosition = {0.0f, 0.0f, -1.0f}; // Example camera position
+        vec3 targetPosition;
+        glm_vec3_add(cameraPosition, cam_front, targetPosition);
+
+        mat4 viewMatrix;
+        glm_lookat(cameraPosition, targetPosition, (vec3){0.0f, 1.0f, 0.0f}, viewMatrix);
+
+        mat4 rotationMatrix;
+        glm_rotate_make(rotationMatrix, angle, (vec3) {0.0f, 0.0f, 1.0f});
+
+        mat4 projectionMatrix;
+        glm_perspective(push_const.res[0] / push_const.res[1], 1.0f, 0.1f, 100.0f, projectionMatrix);
+
+        //mat4 viewMatrix;
+        //glm_mat4_mul(projectionMatrix, rotationMatrix, viewMatrix);
+
+        glm_mat4_copy(viewMatrix, push_const.view);
+        glm_mat4_mul(projectionMatrix, viewMatrix, push_const.view);
+        */
     }
     vkDeviceWaitIdle(dev->dev);
     printf("command buffers finished.\n");

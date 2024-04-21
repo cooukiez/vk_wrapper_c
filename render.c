@@ -172,14 +172,14 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
             vert_attr_desc_count * sizeof(VkVertexInputAttributeDescription));
     vert_attr_descs[0].binding = 0;
     vert_attr_descs[0].location = 0;
-    vert_attr_descs[0].format = VK_FORMAT_R32G32_SFLOAT;
+    vert_attr_descs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
     vert_attr_descs[0].offset = offsetof(struct Vertex, pos);
     printf("vertex attribute description created.\n");
 
     vert_attr_descs[1].binding = 0;
     vert_attr_descs[1].location = 1;
     vert_attr_descs[1].format = VK_FORMAT_R32G32_SFLOAT;
-    vert_attr_descs[1].offset = offsetof(struct Vertex, color);
+    vert_attr_descs[1].offset = offsetof(struct Vertex, uv);
     printf("vertex attribute description created.\n");
     //
     // fill vertex input state info
