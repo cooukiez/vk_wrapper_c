@@ -413,7 +413,7 @@ VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, uint32_t max_fr
     return vcw_sync;
 }
 
-void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
+void prerecord_cmd_pool(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
     //
     // unpack group arguments
     //
@@ -499,6 +499,80 @@ void prepare_rendering(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
 
         printf("command buffer drawing recorded.\n");
     }
+}
+
+void record_cmd_buf(VCW_VkCoreGroup vcw_core, VCW_App vcw_app, VkCommandBuffer cmd_buf,
+                    uint32_t img_index) {
+    //
+    // unpack arguments
+    //
+    VCW_Swapchain vcw_swap = *vcw_core.swap;
+    VCW_Renderpass vcw_rendp = *vcw_app.rendp;
+    VCW_Pipeline vcw_pipe = *vcw_app.pipe;
+    VCW_DescriptorPool vcw_desc = *vcw_app.desc;
+    VCW_Buffer vert_buf = *vcw_app.vert_buf;
+    VCW_Buffer index_buf = *vcw_app.index_buf;
+    //
+    // record command buffer
+    //
+    // begin command buffer
+    //
+    VkCommandBufferBeginInfo cmd_begin_info;
+    cmd_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmd_begin_info.pNext = NULL;
+    cmd_begin_info.flags = 0;
+    cmd_begin_info.pInheritanceInfo = NULL;
+    vkBeginCommandBuffer(cmd_buf, &cmd_begin_info);
+    //
+    // begin renderpass
+    //
+    VkRect2D rendp_area;
+    rendp_area.offset.x = 0;
+    rendp_area.offset.y = 0;
+    rendp_area.extent = vcw_swap.extent;
+    VkClearValue clear_val = {0.5f, 0.0f, 0.5f, 0.0f};
+
+    VkRenderPassBeginInfo rendp_begin_info;
+    rendp_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rendp_begin_info.pNext = NULL;
+    rendp_begin_info.renderPass = vcw_rendp.rendp;
+    rendp_begin_info.framebuffer = vcw_rendp.frame_bufs[img_index];
+    rendp_begin_info.renderArea = rendp_area;
+    rendp_begin_info.clearValueCount = 1;
+    rendp_begin_info.pClearValues = &clear_val;
+
+    vkCmdBeginRenderPass(cmd_buf, &(rendp_begin_info), VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.pipe);
+
+    //
+    // fill viewport
+    //
+    VkViewport viewport;
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float) vcw_swap.extent.width;
+    viewport.height = (float) vcw_swap.extent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(cmd_buf, 0, 1, &viewport);
+    //
+    // fill scissor
+    //
+    VkRect2D scissor;
+    VkOffset2D sci_offset;
+    sci_offset.x = 0;
+    sci_offset.y = 0;
+    scissor.offset = sci_offset;
+    scissor.extent = vcw_swap.extent;
+    vkCmdSetScissor(cmd_buf, 0, 1, &scissor);
+
+    vkCmdBindVertexBuffers(cmd_buf, 0, 1, &vert_buf.buf, &(VkDeviceSize) {0});
+    vkCmdBindIndexBuffer(cmd_buf, index_buf.buf, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.layout, 0, vcw_desc.set_count,
+                            vcw_desc.sets, 0, NULL);
+    vkCmdDrawIndexed(cmd_buf, 6, 1, 0, 0, 0);
+    vkCmdEndRenderPass(cmd_buf);
+    vkEndCommandBuffer(cmd_buf);
 }
 
 VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
