@@ -150,6 +150,12 @@ int main(int argc, char **argv) {
 
         glm_mat4_mul(projection, look_at, push_const.view);
         glm_mat4_mul(push_const.view, view, push_const.view);
+
+        float angle = glm_rad((float) (push_const.time % 360));
+
+        mat4 rot_mat;
+        glm_rotate_make(rot_mat, angle, (vec3){0.0f, 0.0f, 1.0f});
+        glm_mat4_copy(rot_mat, push_const.view);
     }
     vkDeviceWaitIdle(dev->dev);
     printf("command buffers finished.\n");
