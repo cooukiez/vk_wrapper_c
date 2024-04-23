@@ -30,6 +30,7 @@ typedef struct VCW_Surface {
     char resized;
     vec2 cursor_position;
     vec2 cursor_delta;
+    vec3 position;
 
     VkSurfaceKHR surf;
     VkBool32 supported;

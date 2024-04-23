@@ -236,7 +236,7 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     rast_info.depthClampEnable = VK_FALSE;
     rast_info.rasterizerDiscardEnable = VK_FALSE;
     rast_info.polygonMode = VK_POLYGON_MODE_FILL;
-    rast_info.cullMode = VK_CULL_MODE_BACK_BIT;
+    rast_info.cullMode = VK_CULL_MODE_NONE;
     rast_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rast_info.depthBiasEnable = VK_FALSE;
     rast_info.depthBiasConstantFactor = 0.0f;
@@ -461,7 +461,7 @@ void record_cmd_buf(VCW_VkCoreGroup vcw_core, VCW_App vcw_app, VkCommandBuffer c
     //
     VkViewport viewport;
     viewport.x = 0.0f;
-    viewport.y = 0.0f;
+    viewport.y = 0.0f; //(float) vcw_swap.extent.height;
     viewport.width = (float) vcw_swap.extent.width;
     viewport.height = (float) vcw_swap.extent.height;
     viewport.minDepth = 0.0f;

@@ -252,14 +252,16 @@ VCW_Device *create_dev(VCW_PhysicalDevice *vcw_phy_dev) {
 }
 
 static void cursor_position_callback(GLFWwindow *window, double x, double y) {
-    VCW_SURF->cursor_delta[0] = VCW_SURF->cursor_position[0] - (float) x;
-    VCW_SURF->cursor_delta[1] = VCW_SURF->cursor_position[1] - (float) y;
-    VCW_SURF->cursor_position[0] = (float) x;
-    VCW_SURF->cursor_position[1] = (float) y;
+
 }
 
 static void framebuffer_resize_callback(GLFWwindow *window, int width, int height) {
     VCW_SURF->resized = 1;
+}
+
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
 void update_surface_info(VCW_Surface *vcw_surf, VCW_PhysicalDevice vcw_phy_dev) {
@@ -306,7 +308,7 @@ VCW_Surface *create_surf(VkInstance inst, VCW_PhysicalDevice vcw_phy_dev, VCW_De
     VCW_SURF->window_extent = dim;
     VCW_SURF->resized = 0;
     glm_vec2_zero(VCW_SURF->cursor_position);
-    glm_vec2_copy((vec2) {dim.width / 2, dim.height / 2}, VCW_SURF->cursor_delta);
+    glm_vec3_zero(VCW_SURF->position);
     printf("window created.\n");
     //
     // create surface
@@ -320,6 +322,8 @@ VCW_Surface *create_surf(VkInstance inst, VCW_PhysicalDevice vcw_phy_dev, VCW_De
     printf("cursor position callback created.\n");
     glfwSetFramebufferSizeCallback(VCW_SURF->window, framebuffer_resize_callback);
     printf("framebuffer resize callback created.\n");
+    glfwSetKeyCallback(VCW_SURF->window, keyCallback);
+    printf("key callback created.\n");
     //
     // verify surface support
     //
@@ -389,6 +393,7 @@ VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface vcw_surf, VkSwapchain
     swap_info.preTransform = vcw_surf.caps.currentTransform;
     swap_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swap_info.presentMode = vcw_surf.mailbox_mode_supported ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
+    swap_info.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
     swap_info.clipped = VK_TRUE;
     swap_info.oldSwapchain = old;
 

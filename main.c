@@ -78,6 +78,13 @@ int main(int argc, char **argv) {
             {{0.5f,  -0.5f, 0.5f},  {1.0f, 0.0f}}
     };
 
+    vec3 valueToAdd = {1.0f, 1.0f, 1.0f};
+
+    int numVertices = sizeof(vertices) / sizeof(vertices[0]);
+
+    for (int i = 0; i < numVertices; ++i) {
+        glm_vec3_add(vertices[i].pos, valueToAdd, vertices[i].pos);
+    }
 
     VCW_Buffer vert_buf = create_buffer(*dev, sizeof(vertices), sizeof(struct Vertex),
                                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
@@ -146,6 +153,21 @@ int main(int argc, char **argv) {
     vcw_app.unif_buf_count = sync.max_frames;
     vcw_app.frame_count = 0;
 
+    float sensitivity = 0.1f;
+    float yaw = 0.0f;
+    float pitch = 0.0f;
+
+    vec2 last_mouse_pos;
+    float cam_speed = 0.5f;
+
+    double center_x = VCW_SURF->actual_extent.width / 2.0;
+    double center_y = VCW_SURF->actual_extent.height / 2.0;
+    double last_x = center_x, last_y = center_y;
+
+    glm_vec3_copy((vec3) {2.0f, 2.0f, 2.0f}, surf->position);
+
+    glfwSetInputMode(surf->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     printf("\n");
     while (!glfwWindowShouldClose(surf->window)) {
         glfwPollEvents();
@@ -155,54 +177,83 @@ int main(int argc, char **argv) {
         render(vcw_core, vcw_app);
         vcw_app.frame_count += 1;
         vcw_app.cpu_push_const->time += 1;
+
+        double cursor_x, cursor_y;
+        glfwGetCursorPos(surf->window, &cursor_x, &cursor_y);
+        double dx = cursor_x - last_x;
+        double dy = cursor_y - last_y;
+        last_x = cursor_x;
+        last_y = cursor_y;
+        surf->cursor_position[0] = (float) cursor_x;
+        surf->cursor_position[1] = (float) cursor_y;
+        printf("cursor: %f %f", cursor_x, cursor_y);
+
         glm_vec2_copy((vec2) {swap->extent.width, swap->extent.height}, vcw_app.cpu_push_const->res);
 
-        float sensitivity = 0.1f;
-        float yaw = glm_rad((float)(surf->cursor_position[0]) * sensitivity);
-        float pitch = glm_rad((float)(-surf->cursor_position[1]) * sensitivity);
+        surf->cursor_delta[0] = (float) (cursor_x - center_x);
+        surf->cursor_delta[1] = (float) (cursor_y - center_y);
+        //printf("cursor delta x: %f, cursor delta y: %f\n", surf->cursor_delta[0], surf->cursor_delta[1]);
+        //printf("cursor x: %f, cursor y: %f\n", cursor_x, cursor_y);
+
+        yaw += (float)dx * sensitivity;
+        pitch += (float)dy * sensitivity;
+
+        pitch = glm_clamp(pitch, -89.0f, 89.0f);
+        yaw = glm_clamp(yaw, -180.0f, 180.0f);
 
         vec3 cam_front;
-        cam_front[0] = cosf(yaw) * cosf(pitch);
-        cam_front[1] = sinf(pitch);
-        cam_front[2] = sinf(yaw) * cosf(pitch);
+        cam_front[0] = cos(glm_rad(yaw)) * cos(glm_rad(pitch));
+        cam_front[1] = sin(glm_rad(pitch));
+        cam_front[2] = sin(glm_rad(yaw)) * cos(glm_rad(pitch));
         glm_vec3_normalize(cam_front);
 
-        vec3 cam_pos = {0.0f, 0.0f, -1.0f};
+        vec3 cam_right;
+        cam_right[0] = sin(glm_rad(yaw));
+        cam_right[1] = 0.0f; // keep cam horizontal
+        cam_right[2] = -cos(glm_rad(yaw));
+        glm_vec3_normalize(cam_right);
+
+        vec3 cam_movement;
+        glm_vec3_scale(cam_front, cam_speed, cam_movement);
+
+        vec3 cam_right_movement;
+        glm_vec3_scale(cam_right, cam_speed, cam_right_movement);
+
+        if (glfwGetKey(surf->window, GLFW_KEY_W) == GLFW_PRESS)
+            glm_vec3_add(VCW_SURF->position, cam_movement, VCW_SURF->position);
+        if (glfwGetKey(surf->window, GLFW_KEY_S) == GLFW_PRESS)
+            glm_vec3_sub(VCW_SURF->position, cam_movement, VCW_SURF->position);
+        if (glfwGetKey(surf->window, GLFW_KEY_A) == GLFW_PRESS)
+            glm_vec3_add(VCW_SURF->position, cam_right_movement, VCW_SURF->position);
+        if (glfwGetKey(surf->window, GLFW_KEY_D) == GLFW_PRESS)
+            glm_vec3_sub(VCW_SURF->position, cam_right_movement, VCW_SURF->position);
+        if (glfwGetKey(surf->window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+            cam_speed = 0.1f;
+        else
+            cam_speed = 0.05f;
+
+        cam_front[0] = cos(glm_rad(yaw)) * cos(glm_rad(pitch));
+        cam_front[1] = sin(glm_rad(pitch));
+        cam_front[2] = sin(glm_rad(yaw)) * cos(glm_rad(pitch));
+        glm_vec3_normalize(cam_front);
+
+        vec3 cam_pos;
+        glm_vec3_copy(surf->position, cam_pos);
+        printf("cam_pos: %f %f %f\n", cam_pos[0], cam_pos[1], cam_pos[2]);
+        //glm_vec3_mul(cam_pos, (vec3) {-1.0, -1.0, 1.0}, cam_pos);
         glm_vec3_add(cam_pos, cam_front, cam_front);
+
         mat4 view;
         glm_translate(view, (vec3) {0.0f, 0.0f, 0.0f});
         mat4 projection;
-        glm_perspective(push_const.res[0] / push_const.res[1], glm_rad(45.0f), 0.1f, 200.0f, projection);
+        glm_perspective(glm_rad(60.0f), push_const.res[0] / push_const.res[1], 0.1f, 100.0f, projection);
         mat4 look_at;
-        vec4 cam_up = {0.0f, 1.0f, 0.0f, 0.0f};
-        glm_lookat(cam_pos, cam_front, (vec3){0.0f, 1.0f, 0.0f}, look_at);
+        vec3 cam_up = {0.0f, 1.0f, 0.0f};
+        glm_lookat(cam_pos, cam_front, cam_up, look_at);
 
         glm_mat4_mul(projection, look_at, push_const.view);
-        //glm_mat4_mul(push_const.view, view, push_const.view);
 
-        /*
-
-        float angle = glm_rad((float) (push_const.time % 360));
-
-        vec3 cameraPosition = {0.0f, 0.0f, -1.0f}; // Example camera position
-        vec3 targetPosition;
-        glm_vec3_add(cameraPosition, cam_front, targetPosition);
-
-        mat4 viewMatrix;
-        glm_lookat(cameraPosition, targetPosition, (vec3){0.0f, 1.0f, 0.0f}, viewMatrix);
-
-        mat4 rotationMatrix;
-        glm_rotate_make(rotationMatrix, angle, (vec3) {0.0f, 0.0f, 1.0f});
-
-        mat4 projectionMatrix;
-        glm_perspective(push_const.res[0] / push_const.res[1], 1.0f, 0.1f, 100.0f, projectionMatrix);
-
-        //mat4 viewMatrix;
-        //glm_mat4_mul(projectionMatrix, rotationMatrix, viewMatrix);
-
-        glm_mat4_copy(viewMatrix, push_const.view);
-        glm_mat4_mul(projectionMatrix, viewMatrix, push_const.view);
-        */
+        // glfwSetCursorPos(surf->window, center_x, center_y);
     }
     vkDeviceWaitIdle(dev->dev);
     printf("command buffers finished.\n");
