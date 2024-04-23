@@ -3,9 +3,16 @@
 #include "GLFW/glfw3.h"
 #include "vulkan/vulkan.h"
 
-#ifndef TYPE_DEF_H
-#define TYPE_DEF_H
+#ifndef VCW_TYPE_DEF_H
+#define VCW_TYPE_DEF_H
 
+//
+// basis
+//
+typedef struct Vertex {
+    vec3 pos;
+    vec2 uv;
+} Vertex;
 //
 // vulkan core
 //
@@ -26,11 +33,11 @@ typedef struct VCW_Device {
 typedef struct VCW_Surface {
     GLFWwindow *window;
 
+    // does not have to be surface extent
     VkExtent2D window_extent;
     char resized;
-    vec2 cursor_position;
+    vec2 cursor_pos;
     vec2 cursor_delta;
-    vec3 position;
 
     VkSurfaceKHR surf;
     VkBool32 supported;
@@ -98,10 +105,18 @@ typedef enum VCW_RenderResult {
     VCW_ERROR = 1,
     VCW_OUT_OF_DATE = 2,
 } VCW_RenderResult;
+
+typedef struct VCW_RenderStats {
+    double frame_time;
+    double last_swap_recreation_time;
+} VCW_RenderStats;
 //
 // descriptor pool
 //
 typedef struct VCW_DescriptorPool {
+    uint32_t size_count;
+    VkDescriptorPoolSize *sizes;
+
     VkDescriptorSetLayout *layouts;
     uint32_t set_count;
 
@@ -131,8 +146,7 @@ typedef struct VCW_Buffer {
 //
 typedef struct VCW_PushConstant {
     mat4 view;
-
-    vec2 res;
+    vec2 res; // swapchain extent
     uint32_t time;
 } VCW_PushConstant;
 
@@ -148,8 +162,9 @@ typedef struct VCW_App {
     VCW_Sync *sync;
 
     VCW_Buffer *vert_buf;
+    uint32_t num_vertices;
     VCW_Buffer *index_buf;
-    uint32_t index_count;
+    uint32_t num_indices;
 
     VCW_Uniform *cpu_unif;
     VCW_PushConstant *cpu_push_const;
@@ -157,8 +172,32 @@ typedef struct VCW_App {
     VCW_Buffer *unif_bufs;
     uint32_t unif_buf_count;
 
-    uint32_t frame_count;
+    VCW_RenderStats *stats;
 } VCW_App;
+
+typedef struct VCW_Camera {
+    mat4 proj;
+    mat4 intermediate;
+
+    vec3 pos;
+    vec3 front;
+    vec3 right;
+    vec3 up;
+
+    float yaw;
+    float pitch;
+
+    vec3 mov_lin; // forward / backward
+    vec3 mov_lat; // sideways
+
+    float speed;
+    float sensitivity;
+    float fov;
+
+    float aspect_ratio; // height / width
+    float near;
+    float far;
+} VCW_Camera;
 //
 // global definitions
 //
@@ -167,4 +206,4 @@ extern VCW_Device *VCW_DEV;
 extern VCW_Surface *VCW_SURF;
 extern VCW_Swapchain *VCW_SWAP;
 
-#endif //TYPE_DEF_H
+#endif //VCW_TYPE_DEF_H

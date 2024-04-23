@@ -1,7 +1,16 @@
 #include "descripor.h"
 
-VCW_DescriptorPool create_vcw_desc() {
+// numbers of individual descriptors of that type
+VCW_DescriptorPool create_vcw_desc(uint32_t num_descs_uniform, uint32_t num_descs_storage) {
     VCW_DescriptorPool vcw_desc;
+    // number of different descriptor types
+    vcw_desc.size_count = (uint32_t) (num_descs_uniform > 0) + (uint32_t) (num_descs_storage > 0);
+    vcw_desc.sizes = malloc(vcw_desc.size_count * sizeof(VkDescriptorPoolSize));
+    if (num_descs_uniform > 0)
+        vcw_desc.sizes[0] = (VkDescriptorPoolSize) {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, num_descs_uniform};
+    if (num_descs_storage > 0)
+        vcw_desc.sizes[1] = (VkDescriptorPoolSize) {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, num_descs_storage};
+
     vcw_desc.layouts = malloc(sizeof(VkDescriptorSetLayout));
     vcw_desc.set_count = 0;
     vcw_desc.pool = 0;
@@ -45,15 +54,14 @@ void add_desc_set_layout(VCW_Device vcw_dev, VCW_DescriptorPool *vcw_desc,
     printf("add descriptor set layout to descriptor group.\n");
 }
 
-void init_desc_pool(VCW_Device vcw_dev, VCW_DescriptorPool *vcw_desc,
-                    VkDescriptorPoolSize *sizes, uint32_t size_count) {
+void init_desc_pool(VCW_Device vcw_dev, VCW_DescriptorPool *vcw_desc) {
     //
     // create descriptor pool
     //
     VkDescriptorPoolCreateInfo pool_info;
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.poolSizeCount = size_count;
-    pool_info.pPoolSizes = sizes;
+    pool_info.poolSizeCount = vcw_desc->size_count;
+    pool_info.pPoolSizes = vcw_desc->sizes;
     pool_info.maxSets = vcw_desc->set_count;
     pool_info.pNext = NULL;
     pool_info.flags = 0;
@@ -71,6 +79,8 @@ void init_desc_pool(VCW_Device vcw_dev, VCW_DescriptorPool *vcw_desc,
 
     vcw_desc->sets = malloc(sizeof(VkDescriptorSet) * vcw_desc->set_count);
     vkAllocateDescriptorSets(vcw_dev.dev, &alloc_info, vcw_desc->sets);
+
+    printf("initialized descriptor pool.\n");
 }
 
 void write_buffer_desc(VCW_Device vcw_dev, VCW_DescriptorPool *vcw_desc,

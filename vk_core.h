@@ -9,8 +9,8 @@
 
 #include "type_def.h"
 
-#ifndef VK_CORE_H
-#define VK_CORE_H
+#ifndef VCW_VK_CORE_H
+#define VCW_VK_CORE_H
 
 VkApplicationInfo create_app_info();
 
@@ -35,4 +35,4 @@ void clean_up_cmd_pool(VCW_Device vcw_dev, VCW_CommandPool cmd_pool);
 void destroy_vk_core(VkInstance inst, VCW_Device vcw_dev, VCW_Swapchain vcw_swap, VCW_Surface vcw_surf,
                      VCW_CommandPool vcw_cmd);
 
-#endif
+#endif //VCW_VK_CORE_H

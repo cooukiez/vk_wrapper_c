@@ -72,14 +72,56 @@ VCW_Renderpass create_rendp(VCW_Device vcw_dev, VCW_Surface surf) {
     return vcw_rendp;
 }
 
+VCW_Buffer
+create_index_buf(VCW_Device vcw_dev, VCW_PhysicalDevice vcw_phy_dev, uint32_t *indices, uint32_t num_indices) {
+    VCW_Buffer index_buf = create_buffer(vcw_dev, num_indices * sizeof(uint32_t), sizeof(uint32_t),
+                                         VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
+
+    allocate_memory(vcw_dev, vcw_phy_dev, &index_buf);
+    copy_data_to_buf(vcw_dev, &index_buf, indices);
+
+    printf("index buffer created.\n");
+
+    return index_buf;
+}
+
+VCW_Buffer
+create_vertex_buf(VCW_Device vcw_dev, VCW_PhysicalDevice vcw_phy_dev, Vertex *vertices, uint32_t num_vertices) {
+    VCW_Buffer vert_buf = create_buffer(vcw_dev, num_vertices * sizeof(Vertex), sizeof(struct Vertex),
+                                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
+
+    allocate_memory(vcw_dev, vcw_phy_dev, &vert_buf);
+    copy_data_to_buf(vcw_dev, &vert_buf, vertices);
+
+    printf("vertex buffer created.\n");
+    return vert_buf;
+}
+
+VCW_Buffer *create_unif_bufs(VCW_Device vcw_dev, VCW_PhysicalDevice vcw_phy_dev, uint32_t unif_buf_count) {
+    VCW_Buffer *unif_bufs = malloc(unif_buf_count * sizeof(VCW_Buffer));
+    for (uint32_t i = 0; i < unif_buf_count; i++) {
+        unif_bufs[i] = create_buffer(vcw_dev, sizeof(VCW_Uniform), sizeof(VCW_Uniform),
+                                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                     VK_SHARING_MODE_EXCLUSIVE);
+
+        allocate_memory(vcw_dev, vcw_phy_dev, &unif_bufs[i]);
+        map_mem(vcw_dev, &unif_bufs[i]);
+    }
+
+    printf("uniform buffers created.\n");
+    return unif_bufs;
+}
+
 VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_DescriptorPool vcw_desc, VkExtent2D extent) {
     VCW_Pipeline vcw_pipe;
     //
     // load shader
     //
     FILE *fp_vert = NULL, *fp_frag = NULL;
-    fp_vert = fopen("vert.spv", "rb+");
-    fp_frag = fopen("frag.spv", "rb+");
+    if (fopen_s(&fp_vert, "vert.spv", "rb+") != 0)
+        printf("cannot find vertex shader code.\n");
+    if (fopen_s(&fp_frag, "frag.spv", "rb+") != 0)
+        printf("cannot find fragment shader code.\n");
     char shader_loaded = 1;
     if (fp_vert == NULL || fp_frag == NULL) {
         shader_loaded = 0;
@@ -135,7 +177,7 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     vert_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vert_stage_info.module = vert_shad_mod;
     char vert_entry[VK_MAX_EXTENSION_NAME_SIZE];
-    strcpy(vert_entry, "main");
+    strcpy_s(vert_entry, VK_MAX_EXTENSION_NAME_SIZE, "main");
     vert_stage_info.pName = vert_entry;
     vert_stage_info.pSpecializationInfo = NULL;
     printf("vertex shader stage info filled.\n");
@@ -146,7 +188,7 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     frag_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     frag_stage_info.module = frag_shad_mod;
     char frag_entry[VK_MAX_EXTENSION_NAME_SIZE];
-    strcpy(frag_entry, "main");
+    strcpy_s(frag_entry, VK_MAX_EXTENSION_NAME_SIZE, "main");
     frag_stage_info.pName = frag_entry;
     frag_stage_info.pSpecializationInfo = NULL;
     printf("fragment shader stage info filled.\n");
@@ -165,7 +207,8 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     vert_bindg_descs[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     printf("vertex input binding description created.\n");
     //
-    //create vertex attribute description
+    // create vertex attribute description
+    // !!! ADJUST TO YOUR VERTEX STRUCT !!!
     //
     uint32_t vert_attr_desc_count = 2;
     VkVertexInputAttributeDescription *vert_attr_descs = malloc(
@@ -175,7 +218,6 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     vert_attr_descs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
     vert_attr_descs[0].offset = offsetof(struct Vertex, pos);
     printf("vertex attribute description created.\n");
-
     vert_attr_descs[1].binding = 0;
     vert_attr_descs[1].location = 1;
     vert_attr_descs[1].format = VK_FORMAT_R32G32_SFLOAT;
@@ -235,9 +277,13 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     rast_info.flags = 0;
     rast_info.depthClampEnable = VK_FALSE;
     rast_info.rasterizerDiscardEnable = VK_FALSE;
+    // CHANGE FILL / BORDER
     rast_info.polygonMode = VK_POLYGON_MODE_FILL;
+    // ACTIVATE / DEACTIVATE CULLING
     rast_info.cullMode = VK_CULL_MODE_NONE;
+    // CHANGE YOUR POLYGON ORDER -> CORRECT ORDER FOR CULLING
     rast_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    // STORE DEPTH INFORMATION (available in v2)
     rast_info.depthBiasEnable = VK_FALSE;
     rast_info.depthBiasConstantFactor = 0.0f;
     rast_info.depthBiasClamp = 0.0f;
@@ -260,7 +306,8 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     printf("multisample info filled.\n");
     //
     // fill color blend attachment state
-    //
+    // - could be used for jfa later
+    // - just create a new pipeline with blending active (efficiency?)
     VkPipelineColorBlendAttachmentState color_blend_attach;
     color_blend_attach.blendEnable = VK_FALSE;
     color_blend_attach.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
@@ -351,7 +398,7 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
 
 void create_frame_bufs(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, VCW_Renderpass *vcw_rendp, VkExtent2D extent) {
     //
-    // create framebuffer
+    // create framebuffers
     //
     VkFramebufferCreateInfo *frame_buf_infos = malloc(vcw_swap.img_count * sizeof(VkFramebufferCreateInfo));
     vcw_rendp->frame_bufs = malloc(vcw_swap.img_count * sizeof(VkFramebuffer));
@@ -374,6 +421,9 @@ void create_frame_bufs(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, VCW_Renderpas
     vcw_rendp->frame_buf_count = vcw_swap.img_count;
 }
 
+// the basic layout for this is that there are
+// two frames in flight with total 3 swapchain images
+// so only two of them will be rendered at same time
 VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, uint32_t max_frames_in_flight) {
     VCW_Sync vcw_sync;
     vcw_sync.img_count = vcw_swap.img_count;
@@ -413,6 +463,7 @@ VCW_Sync create_sync(VCW_Device vcw_dev, VCW_Swapchain vcw_swap, uint32_t max_fr
     return vcw_sync;
 }
 
+// MODIFY THIS FUNCTION TO YOUR RENDERING NEEDS
 void record_cmd_buf(VCW_VkCoreGroup vcw_core, VCW_App vcw_app, VkCommandBuffer cmd_buf,
                     uint32_t img_index, uint32_t cur_frame) {
     //
@@ -489,7 +540,7 @@ void record_cmd_buf(VCW_VkCoreGroup vcw_core, VCW_App vcw_app, VkCommandBuffer c
     vkCmdPushConstants(cmd_buf, vcw_pipe.layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                        sizeof(VCW_PushConstant), vcw_app.cpu_push_const);
 
-    vkCmdDrawIndexed(cmd_buf, vcw_app.index_count, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd_buf, vcw_app.num_indices, 1, 0, 0, 0);
     vkCmdEndRenderPass(cmd_buf);
     vkEndCommandBuffer(cmd_buf);
 }
@@ -583,6 +634,9 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
 
     vcw_sync->cur_frame = (cur_frame + 1) % vcw_sync->max_frames;
 
+    clock_t render_end = clock();
+    vcw_app.stats->frame_time = (render_end - render_start) / (double) CLOCKS_PER_SEC;
+
     return 0;
 }
 
@@ -596,7 +650,7 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
     VCW_Swapchain *vcw_swap = vcw_core.swap;
     VCW_Renderpass *vcw_rendp = vcw_app.rendp;
     //
-    // recreate swapchain
+    // wait for frame to not be minimized
     //
     printf("\n");
     int width = 0, height = 0;
@@ -605,12 +659,11 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
         glfwGetFramebufferSize(vcw_surf->window, &width, &height);
         glfwWaitEvents();
     }
-
+    //
+    // recreate swapchain
+    //
     clock_t start = clock();
     vkDeviceWaitIdle(vcw_dev.dev);
-    clock_t end = clock();
-    double elapsed_time = (end - start) / (double) CLOCKS_PER_SEC;
-    printf("device idle: %f\n", elapsed_time);
 
     clean_up_frame_bufs(vcw_dev, *vcw_rendp);
     clean_up_swap(vcw_dev, *vcw_swap);
@@ -619,6 +672,9 @@ void recreate_swap(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
 
     *vcw_swap = *create_swap(vcw_dev, *vcw_surf, NULL);
     create_frame_bufs(vcw_dev, *vcw_swap, vcw_rendp, vcw_swap->extent);
+
+    clock_t end = clock();
+    vcw_app.stats->last_swap_recreation_time = (end - start) / (double) CLOCKS_PER_SEC;
 }
 
 void clean_up_frame_bufs(VCW_Device vcw_dev, VCW_Renderpass vcw_rendp) {

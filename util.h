@@ -8,8 +8,8 @@
 
 //#include "renderdoc_app.h"
 
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef VCW_UTIL_H
+#define VCW_UTIL_H
 
 char check_pointer(void *ptr);
 
@@ -17,4 +17,4 @@ char check_pointer(void *ptr);
 
 //extern RENDERDOC_API_1_1_2 *RDOC_API;
 
-#endif
+#endif //VCW_UTIL_H

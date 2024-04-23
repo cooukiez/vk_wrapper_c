@@ -6,8 +6,8 @@
 
 #include "type_def.h"
 
-#ifndef BUFFER_H
-#define BUFFER_H
+#ifndef VCW_BUFFER_H
+#define VCW_BUFFER_H
 
 uint32_t find_mem_type(VCW_PhysicalDevice vcw_phy_dev, uint32_t mem_type, VkMemoryPropertyFlags prop);
 
@@ -23,4 +23,4 @@ void map_mem(VCW_Device vcw_dev, VCW_Buffer *buf);
 
 void unmap_mem(VCW_Device vcw_dev, VCW_Buffer *buf);
 
-#endif
+#endif //VCW_BUFFER_H

@@ -4,17 +4,19 @@
 #include "util.h"
 #include "descripor.h"
 #include "buffer.h"
+#include "vert_data.h"
+#include "camera.h"
 
-
-typedef struct Vertex {
-    vec3 pos;
-    vec2 uv;
-} Vertex;
-
-#ifndef RENDER_H
-#define RENDER_H
+#ifndef VCW_RENDER_H
+#define VCW_RENDER_H
 
 VCW_Renderpass create_rendp(VCW_Device vcw_dev, VCW_Surface surf);
+
+VCW_Buffer create_index_buf(VCW_Device vcw_dev, VCW_PhysicalDevice vcw_phy_dev, uint32_t *indices, uint32_t num_indices);
+
+VCW_Buffer create_vertex_buf(VCW_Device vcw_dev, VCW_PhysicalDevice vcw_phy_dev, Vertex *vertices, uint32_t num_vertices);
+
+VCW_Buffer *create_unif_bufs(VCW_Device vcw_dev, VCW_PhysicalDevice vcw_phy_dev, uint32_t unif_buf_count);
 
 VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_DescriptorPool vcw_desc, VkExtent2D extent);
 
@@ -34,4 +36,4 @@ void clean_up_sync(VCW_Device vcw_dev, VCW_Sync vcw_sync);
 
 void destroy_render(VCW_Device vcw_dev, VCW_Pipeline vcw_pipe, VCW_Renderpass vcw_rendp, VCW_Sync vcw_sync);
 
-#endif
+#endif //VCW_RENDER_H

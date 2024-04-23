@@ -1,0 +1,22 @@
+//
+// Created by Ludw on 4/23/2024.
+//
+
+#include "type_def.h"
+
+#ifndef VCW_VERT_DATA_H
+#define VCW_VERT_DATA_H
+
+#define NUM_CUBE_VERTICES 24
+#define NUM_CUBE_INDICES 36
+
+#define NUM_TRIANGLE_VERTICES 3
+#define NUM_TRIANGLE_INDICES 6
+
+extern Vertex CUBE_VERTICES[NUM_CUBE_VERTICES];
+extern uint32_t CUBE_INDICES[NUM_CUBE_INDICES];
+
+extern Vertex TRIANGLE_VERTICES[NUM_TRIANGLE_VERTICES];
+extern uint32_t TRIANGLE_INDICES[NUM_TRIANGLE_INDICES];
+
+#endif //VCW_VERT_DATA_H
