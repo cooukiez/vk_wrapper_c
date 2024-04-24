@@ -11,8 +11,8 @@
 #define SPEED 0.5f
 #define SENSITIVITY 0.1f
 
-#define NEAR 0.1f
-#define FAR 100.0f
+#define CAM_NEAR 0.1f
+#define CAM_FAR 100.0f
 
 #define MIN_PITCH (-89.0f)
 #define MAX_PITCH 89.0f
@@ -34,8 +34,8 @@ VCW_Camera create_default_cam(VkExtent2D res) {
     cam.sensitivity = SENSITIVITY;
 
     cam.aspect_ratio = (float) res.width / (float) res.height;
-    cam.near = NEAR;
-    cam.far = FAR;
+    cam.near = CAM_NEAR;
+    cam.far = CAM_FAR;
 
     glm_perspective(glm_rad(cam.fov), cam.aspect_ratio, cam.near, cam.far, cam.proj);
 

@@ -3,6 +3,8 @@
 #include "GLFW/glfw3.h"
 #include "vulkan/vulkan.h"
 
+// #include "util.h"
+
 #ifndef VCW_TYPE_DEF_H
 #define VCW_TYPE_DEF_H
 
@@ -73,57 +75,6 @@ typedef struct VCW_VkCoreGroup {
     VCW_Swapchain *swap;
 } VCW_VkCoreGroup;
 //
-// render
-//
-typedef struct VCW_Renderpass {
-    VkRenderPass rendp;
-    uint32_t frame_buf_count;
-    VkFramebuffer *frame_bufs;
-} VCW_Renderpass;
-
-typedef struct VCW_Pipeline {
-    VkPipelineLayout layout;
-    VkPipeline pipe;
-} VCW_Pipeline;
-
-typedef struct VCW_Sync {
-    VkFence *img_fens;
-    uint32_t img_count;
-
-    // THESE ARE MAX FRAMES IN FLIGHT !!!
-    uint32_t max_frames;
-    // LENGTH OF MAX FRAMES !!!
-    VkSemaphore *img_avl_semps;
-    VkSemaphore *rend_fin_semps;
-    VkFence *fens;
-
-    uint32_t cur_frame;
-} VCW_Sync;
-
-typedef enum VCW_RenderResult {
-    VCW_SUCCESS = 0,
-    VCW_ERROR = 1,
-    VCW_OUT_OF_DATE = 2,
-} VCW_RenderResult;
-
-typedef struct VCW_RenderStats {
-    double frame_time;
-    double last_swap_recreation_time;
-} VCW_RenderStats;
-//
-// descriptor pool
-//
-typedef struct VCW_DescriptorPool {
-    uint32_t size_count;
-    VkDescriptorPoolSize *sizes;
-
-    VkDescriptorSetLayout *layouts;
-    uint32_t set_count;
-
-    VkDescriptorPool pool;
-    VkDescriptorSet *sets;
-} VCW_DescriptorPool;
-//
 // buffer
 //
 typedef struct VCW_Buffer {
@@ -141,6 +92,79 @@ typedef struct VCW_Buffer {
     // only valid if map is called
     void *cpu_mem_pointer;
 } VCW_Buffer;
+//
+// image
+//
+typedef struct VCW_Image {
+    VkFormat format;
+
+    VkImage img;
+    VkImageView view;
+
+    VkMemoryRequirements mem_req;
+    uint32_t mem_type;
+    VkDeviceMemory mem;
+
+    VkSampler sampler;
+    char has_sampler;
+} VCW_Image;
+//
+// render
+//
+typedef struct VCW_Renderpass {
+    VkRenderPass rendp;
+    uint32_t frame_buf_count;
+    VkFramebuffer *frame_bufs;
+
+    VCW_Image *targets;
+    uint32_t target_count;
+} VCW_Renderpass;
+
+typedef struct VCW_Pipeline {
+    VkPipelineLayout layout;
+    VkPipeline pipe;
+} VCW_Pipeline;
+
+typedef struct VCW_Sync {
+    /*
+    VkFence *img_fens;
+    uint32_t img_count;
+     */
+
+    // THESE ARE MAX FRAMES IN FLIGHT !!!
+    uint32_t max_frames;
+    // LENGTH OF MAX FRAMES !!!
+    VkSemaphore *img_avl_semps;
+    VkSemaphore *rend_fin_semps;
+    VkFence *fens;
+
+    uint32_t cur_frame;
+} VCW_Sync;
+
+typedef enum VCW_RenderResult {
+    VCW_SUCCESS = 0, VCW_ERROR = 1, VCW_OUT_OF_DATE = 2,
+} VCW_RenderResult;
+
+typedef struct VCW_RenderStats {
+    double frame_time;
+    double last_swap_recreation_time;
+
+    double img_acquire_time;
+    double cmd_record_time;
+} VCW_RenderStats;
+//
+// descriptor pool
+//
+typedef struct VCW_DescriptorPool {
+    uint32_t size_count;
+    VkDescriptorPoolSize *sizes;
+
+    VkDescriptorSetLayout *layouts;
+    uint32_t set_count;
+
+    VkDescriptorPool pool;
+    VkDescriptorSet *sets;
+} VCW_DescriptorPool;
 //
 // pipeline group
 //

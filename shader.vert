@@ -23,7 +23,7 @@ void main() {
         vec4(0.0, 0.0, 0.0, 1.0)
     );
 
-    gl_Position = pc.view * x * vec4(in_pos, 1.0);
+    gl_Position = vec4(in_pos, 1.0); //pc.view * x * vec4(in_pos, 1.0);
     frag_pos = in_pos;
     uv = in_uv;
 }

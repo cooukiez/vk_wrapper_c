@@ -1,10 +1,13 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
 #include "render.h"
+
+#define MAX_FRAMES_IN_FLIGHT 2
+
+#define SCALE_RESOLUTION 0
+#define RESOLUTION_SCALING_FACTOR 0.5f
 
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -22,21 +25,25 @@ int main(int argc, char **argv) {
 
     VCW_VkCoreGroup vcw_core = {vcw_phy_dev, vcw_dev, surf, swap};
 
-    VCW_CommandPool cmd_pool = create_cmd_pool(*vcw_dev, *swap);
+    VCW_CommandPool cmd_pool = create_cmd_pool(*vcw_dev, swap->img_count);
     VCW_Renderpass rendp = create_rendp(*vcw_dev, *surf);
-    create_frame_bufs(*vcw_dev, *swap, &rendp, swap->extent);
-    VCW_Sync sync = create_sync(*vcw_dev, *swap, 2);
+    if (SCALE_RESOLUTION)
+        create_render_targets(*vcw_dev, *vcw_phy_dev, *surf, &rendp, swap->img_count,
+                              (VkExtent2D) {swap->extent.width * RESOLUTION_SCALING_FACTOR,
+                                            swap->extent.height * RESOLUTION_SCALING_FACTOR});
+    create_frame_bufs(*vcw_dev, &rendp, swap->img_count, swap->img_views, swap->extent);
+    VCW_Sync sync = create_sync(*vcw_dev, swap->img_count, MAX_FRAMES_IN_FLIGHT);
     //
     // create index buffer
     //
-    uint32_t *indices = CUBE_INDICES;
-    uint32_t num_indices = NUM_CUBE_INDICES;
+    uint32_t *indices = TRIANGLE_INDICES;
+    uint32_t num_indices = NUM_TRIANGLE_INDICES;
     VCW_Buffer index_buf = create_index_buf(*vcw_dev, *vcw_phy_dev, indices, num_indices);
     //
     // create vertex buffer
     //
-    Vertex *vertices = CUBE_VERTICES;
-    uint32_t num_vertices = NUM_CUBE_VERTICES;
+    Vertex *vertices = TRIANGLE_VERTICES;
+    uint32_t num_vertices = NUM_TRIANGLE_VERTICES;
     VCW_Buffer vert_buf = create_vertex_buf(*vcw_dev, *vcw_phy_dev, vertices, num_vertices);
     //
     // create uniform buffers
@@ -57,7 +64,7 @@ int main(int argc, char **argv) {
         write_buffer_desc(*vcw_dev, &vcw_desc, &unif_bufs[i], i, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     }
 
-    VCW_Pipeline pipe = create_pipe(*vcw_dev, rendp, vcw_desc, swap->extent);
+    VCW_Pipeline pipe = create_pipe(*vcw_dev, rendp, vcw_desc);
 
     VCW_Uniform unif;
     glm_mat4_identity(unif.data);
@@ -91,6 +98,11 @@ int main(int argc, char **argv) {
 
     glfwSetInputMode(surf->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+    uint32_t frame_count = 0;
+    double frame_time = 0;
+    double cmd_record_time = 0;
+    double img_acquire_time = 0;
+
     printf("\n");
     while (!glfwWindowShouldClose(surf->window)) {
         glfwPollEvents();
@@ -98,7 +110,9 @@ int main(int argc, char **argv) {
         // submit
         //
         render(vcw_core, vcw_app);
+
         vcw_app.cpu_push_const->time += 1;
+        /*
 
         double cursor_x, cursor_y;
         glfwGetCursorPos(surf->window, &cursor_x, &cursor_y);
@@ -126,6 +140,24 @@ int main(int argc, char **argv) {
             cam.speed = CAM_SLOW;
 
         write_view_proj_mat(cam, &push_const.view);
+         */
+
+        frame_time += vcw_app.stats->frame_time * 1000.0;
+        frame_time /= 2;
+
+        cmd_record_time += vcw_app.stats->cmd_record_time * 1000.0;
+        cmd_record_time /= 2;
+
+        img_acquire_time += vcw_app.stats->img_acquire_time * 1000.0;
+        img_acquire_time /= 2;
+
+        if (frame_count % 120 == 0) {
+            char title[128];
+            uint32_t fps = (uint32_t) (1.0 / (frame_time / 1000.0));
+            sprintf(title, "Vk Wrapper - %fms | %d fps | %f ms | %f ms", frame_time, fps, cmd_record_time, img_acquire_time);
+            glfwSetWindowTitle(surf->window, title);
+        }
+        frame_count++;
     }
 
     vkDeviceWaitIdle(vcw_dev->dev);

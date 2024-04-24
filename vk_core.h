@@ -4,13 +4,13 @@
 
 #define GLFW_INCLUDE_VULKAN
 
-#include "GLFW/glfw3.h"
-#include "vulkan/vulkan.h"
-
 #include "type_def.h"
 
 #ifndef VCW_VK_CORE_H
 #define VCW_VK_CORE_H
+
+extern VkComponentMapping DEFAULT_COMPONENT_MAPPING;
+extern VkImageSubresourceRange DEFAULT_SUBRESOURCE_RANGE;
 
 VkApplicationInfo create_app_info();
 
@@ -26,7 +26,9 @@ VCW_Surface *create_surf(VkInstance inst, VCW_PhysicalDevice vcw_phy_dev, VCW_De
 
 VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface surf, VkSwapchainKHR old);
 
-VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, VCW_Swapchain vcw_swap);
+VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, uint32_t cmd_buf_count);
+
+uint32_t find_mem_type(VCW_PhysicalDevice vcw_phy_dev, uint32_t mem_type, VkMemoryPropertyFlags prop);
 
 void clean_up_swap(VCW_Device vcw_dev, VCW_Swapchain swap);
 

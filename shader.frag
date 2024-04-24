@@ -1,19 +1,9 @@
 #version 450
 
-layout (binding = 0) uniform UBO {
-    mat4 data;
-} ubo;
-
 layout (location = 0) out vec4 out_color;
 
 layout (location = 0) in vec3 frag_pos;
 layout (location = 1) in vec2 uv;
-
-layout (push_constant) uniform PushConstant {
-    mat4 view;
-    vec2 res;
-    uint time;
-} pc;
 
 void main() {
     /*
@@ -26,5 +16,5 @@ void main() {
     out_color = vec4(col, 1.0);
     */
 
-    out_color = vec4(uv, 1, 1);
+    out_color = vec4(1);
 }

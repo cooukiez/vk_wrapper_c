@@ -4,8 +4,6 @@
 
 #include "util.h"
 
-
-
 char check_pointer(void *ptr) {
     char *char_ptr = (char *) ptr;
 

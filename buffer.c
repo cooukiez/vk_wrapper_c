@@ -1,18 +1,5 @@
 #include "buffer.h"
 
-uint32_t find_mem_type(VCW_PhysicalDevice vcw_phy_dev, uint32_t mem_type, VkMemoryPropertyFlags prop) {
-    VkPhysicalDeviceMemoryProperties mem_prop;
-    vkGetPhysicalDeviceMemoryProperties(vcw_phy_dev.dev, &mem_prop);
-
-    for (uint32_t i = 0; i < mem_prop.memoryTypeCount; i++) {
-        if ((mem_type & (1 << i)) && (mem_prop.memoryTypes[i].propertyFlags & prop) == prop) {
-            return i;
-        }
-    }
-
-    return 0;
-}
-
 VCW_Buffer create_buffer(VCW_Device vcw_dev, size_t size, uint32_t alignment,
                          VkBufferUsageFlagBits usage, VkSharingMode sharing) {
     VCW_Buffer buf;
@@ -44,7 +31,6 @@ void allocate_memory(VCW_Device vcw_dev, VCW_PhysicalDevice vcw_phy_dev, VCW_Buf
     printf("found memory type index: %x\n", buf->mem_type);
 
     VkMemoryAllocateInfo alloc_info;
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = buf->mem_req.size;
     alloc_info.memoryTypeIndex = buf->mem_type;

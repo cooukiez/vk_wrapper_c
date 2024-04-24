@@ -1,11 +1,13 @@
 #include "vk_core.h"
 
+// #define VALIDATION
 #define ENABLED_LAYER_COUNT 1
 #define ENABLED_DEV_EXT_COUNT 1
+#define SUBMIT_IMMEDIATE
 
-const VkComponentMapping DEFAULT_COMPONENT_MAPPING = {.r = VK_COMPONENT_SWIZZLE_IDENTITY, .g = VK_COMPONENT_SWIZZLE_IDENTITY, .b = VK_COMPONENT_SWIZZLE_IDENTITY, .a = VK_COMPONENT_SWIZZLE_IDENTITY};
+VkComponentMapping DEFAULT_COMPONENT_MAPPING = {.r = VK_COMPONENT_SWIZZLE_IDENTITY, .g = VK_COMPONENT_SWIZZLE_IDENTITY, .b = VK_COMPONENT_SWIZZLE_IDENTITY, .a = VK_COMPONENT_SWIZZLE_IDENTITY};
+VkImageSubresourceRange DEFAULT_SUBRESOURCE_RANGE = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1};
 
-const VkImageSubresourceRange DEFAULT_SUBRESOURCE_RANGE = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1};
 
 VCW_PhysicalDevice *VCW_PHY_DEV = NULL;
 VCW_Device *VCW_DEV = NULL;
@@ -44,16 +46,21 @@ VkInstance create_inst(VkApplicationInfo *app_info) {
     inst_info.pNext = NULL;
     inst_info.flags = 0;
     inst_info.pApplicationInfo = app_info;
-    inst_info.enabledLayerCount = ENABLED_LAYER_COUNT;
-    char pp_layers[ENABLED_LAYER_COUNT][VK_MAX_EXTENSION_NAME_SIZE];
+#ifdef VALIDATION
+        inst_info.enabledLayerCount = ENABLED_LAYER_COUNT;
+        char pp_layers[ENABLED_LAYER_COUNT][VK_MAX_EXTENSION_NAME_SIZE];
 
-    strcpy_s(pp_layers[0], sizeof(pp_layers[0]), "VK_LAYER_KHRONOS_validation");
+        strcpy_s(pp_layers[0], sizeof(pp_layers[0]), "VK_LAYER_KHRONOS_validation");
 
-    char *pp_layer_names[ENABLED_LAYER_COUNT];
-    for (uint32_t i = 0; i < ENABLED_LAYER_COUNT; i++) {
-        pp_layer_names[i] = pp_layers[i];
-    }
-    inst_info.ppEnabledLayerNames = (const char *const *) pp_layer_names;
+        char *pp_layer_names[ENABLED_LAYER_COUNT];
+        for (uint32_t i = 0; i < ENABLED_LAYER_COUNT; i++) {
+            pp_layer_names[i] = pp_layers[i];
+        }
+        inst_info.ppEnabledLayerNames = (const char *const *) pp_layer_names;
+#else
+        inst_info.enabledLayerCount = 0;
+        inst_info.ppEnabledLayerNames = NULL;
+#endif
     uint32_t ext_count = 0;
     const char *const *pp_ext_names = glfwGetRequiredInstanceExtensions(&ext_count);
     inst_info.enabledExtensionCount = ext_count;
@@ -391,7 +398,9 @@ VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface vcw_surf, VkSwapchain
     swap_info.preTransform = vcw_surf.caps.currentTransform;
     swap_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swap_info.presentMode = vcw_surf.mailbox_mode_supported ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
+#ifdef SUBMIT_IMMEDIATE
     swap_info.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+#endif
     swap_info.clipped = VK_TRUE;
     swap_info.oldSwapchain = old;
 
@@ -430,7 +439,7 @@ VCW_Swapchain *create_swap(VCW_Device vcw_dev, VCW_Surface vcw_surf, VkSwapchain
     return VCW_SWAP;
 }
 
-VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, VCW_Swapchain vcw_swap) {
+VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, uint32_t cmd_buf_count) {
     VCW_CommandPool vcw_cmd;
     //
     // create command pool
@@ -451,7 +460,7 @@ VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, VCW_Swapchain vcw_swap) {
     cmd_alloc_info.pNext = NULL;
     cmd_alloc_info.commandPool = vcw_cmd.cmd_pool;
     cmd_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    vcw_cmd.cmd_buf_count = vcw_swap.img_count;
+    vcw_cmd.cmd_buf_count = cmd_buf_count;
     cmd_alloc_info.commandBufferCount = vcw_cmd.cmd_buf_count;
 
     vcw_cmd.cmd_bufs = malloc(vcw_cmd.cmd_buf_count * sizeof(VkCommandBuffer));
@@ -459,6 +468,19 @@ VCW_CommandPool create_cmd_pool(VCW_Device vcw_dev, VCW_Swapchain vcw_swap) {
     printf("command buffers allocated.\n");
 
     return vcw_cmd;
+}
+
+uint32_t find_mem_type(VCW_PhysicalDevice vcw_phy_dev, uint32_t mem_type, VkMemoryPropertyFlags prop) {
+    VkPhysicalDeviceMemoryProperties mem_prop;
+    vkGetPhysicalDeviceMemoryProperties(vcw_phy_dev.dev, &mem_prop);
+
+    for (uint32_t i = 0; i < mem_prop.memoryTypeCount; i++) {
+        if ((mem_type & (1 << i)) && (mem_prop.memoryTypes[i].propertyFlags & prop) == prop) {
+            return i;
+        }
+    }
+
+    return 0;
 }
 
 void clean_up_swap(VCW_Device vcw_dev, VCW_Swapchain swap) {

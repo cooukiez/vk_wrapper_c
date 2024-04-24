@@ -2,9 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "vulkan/vulkan.h"
-
-#include "type_def.h"
+#include "image.h"
 #include "buffer.h"
 
 #ifndef VCW_DESC_H
