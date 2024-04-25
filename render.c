@@ -281,7 +281,7 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     // CHANGE FILL / BORDER
     rast_info.polygonMode = VK_POLYGON_MODE_FILL;
     // ACTIVATE / DEACTIVATE CULLING
-    rast_info.cullMode = VK_CULL_MODE_NONE;
+    rast_info.cullMode = VK_CULL_MODE_BACK_BIT;
     // CHANGE YOUR POLYGON ORDER -> CORRECT ORDER FOR CULLING
     rast_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
     // STORE DEPTH INFORMATION (available in v2)
@@ -349,10 +349,10 @@ VCW_Pipeline create_pipe(VCW_Device vcw_dev, VCW_Renderpass rendp, VCW_Descripto
     pipe_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipe_layout_info.pNext = NULL;
     pipe_layout_info.flags = 0;
-    pipe_layout_info.setLayoutCount = vcw_desc.set_count;
-    pipe_layout_info.pSetLayouts = vcw_desc.layouts;
-    pipe_layout_info.pushConstantRangeCount = 1;
-    pipe_layout_info.pPushConstantRanges = &push_const_range;
+    pipe_layout_info.setLayoutCount = 0; // vcw_desc.set_count;
+    pipe_layout_info.pSetLayouts = NULL; // vcw_desc.layouts;
+    pipe_layout_info.pushConstantRangeCount = 0; // 1;
+    pipe_layout_info.pPushConstantRanges = NULL; // &push_const_range;
 
     vkCreatePipelineLayout(vcw_dev.dev, &pipe_layout_info, NULL, &vcw_pipe.layout);
     printf("pipeline layout created.\n");
@@ -568,12 +568,15 @@ void record_cmd_buf(VCW_VkCoreGroup vcw_core, VCW_App vcw_app, VkCommandBuffer c
     // VCW_Buffer unif_buf = vcw_app.unif_bufs[cur_frame];
     // memcpy(unif_buf.cpu_mem_pointer, vcw_app.cpu_unif, unif_buf.size);
 
+    /*
     vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, vcw_pipe.layout, 0, vcw_desc.set_count,
                             vcw_desc.sets, 0, NULL);
     vkCmdPushConstants(cmd_buf, vcw_pipe.layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                        sizeof(VCW_PushConstant), vcw_app.cpu_push_const);
+    */
 
     vkCmdDrawIndexed(cmd_buf, vcw_app.num_indices, 1, 0, 0, 0);
+    vkCmdDraw(cmd_buf, 3, 1, 0, 0);
     vkCmdEndRenderPass(cmd_buf);
     vkEndCommandBuffer(cmd_buf);
 }
@@ -586,22 +589,18 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
     // unpack group arguments
     //
     VCW_Device vcw_dev = *vcw_core.dev;
-    VCW_Surface *vcw_surf = vcw_core.surf;
     VCW_Swapchain *vcw_swap = vcw_core.swap;
-    VCW_CommandPool *vcw_cmd = vcw_app.cmd;
-    VCW_Sync *vcw_sync = vcw_app.sync;
+    uint32_t cur_frame = vcw_app.sync->cur_frame;
+    VkFence fence = vcw_app.sync->fens[cur_frame];
+    VkSemaphore img_avl_semp = vcw_app.sync->img_avl_semps[cur_frame];
+    VkSemaphore rend_fin_semp = vcw_app.sync->rend_fin_semps[cur_frame];
     //
     // main rendering
     //
-
-    uint32_t cur_frame = vcw_sync->cur_frame;
-    start = clock();
-    vkWaitForFences(vcw_dev.dev, 1, &(vcw_sync->fens[cur_frame]), VK_TRUE, UINT64_MAX);
-    end = clock();
-    vcw_app.stats->img_acquire_time = (end - start) / (double) CLOCKS_PER_SEC;
+    // vkWaitForFences(vcw_dev.dev, 1, &(fence), VK_TRUE, UINT64_MAX);
 
     uint32_t img_index = 0;
-    VkResult result = vkAcquireNextImageKHR(vcw_dev.dev, vcw_swap->swap, UINT64_MAX, vcw_sync->img_avl_semps[cur_frame],
+    VkResult result = vkAcquireNextImageKHR(vcw_dev.dev, vcw_swap->swap, UINT64_MAX, img_avl_semp,
                                             VK_NULL_HANDLE, &img_index);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -612,11 +611,12 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
         return 1;
     }
 
-    vkResetFences(vcw_dev.dev, 1, &(vcw_sync->fens[cur_frame]));
+    VkCommandBuffer cmd_buf = vcw_app.cmd->cmd_bufs[img_index];
+    vkResetFences(vcw_dev.dev, 1, &(fence));
 
-    vkResetCommandBuffer(vcw_cmd->cmd_bufs[img_index], 0);
+    vkResetCommandBuffer(cmd_buf, 0);
     start = clock();
-    record_cmd_buf(vcw_core, vcw_app, vcw_cmd->cmd_bufs[img_index], img_index, cur_frame);
+    record_cmd_buf(vcw_core, vcw_app, cmd_buf, img_index, cur_frame);
     end = clock();
     vcw_app.stats->cmd_record_time = (end - start) / (double) CLOCKS_PER_SEC;
 
@@ -625,7 +625,7 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
     sub_info.pNext = NULL;
 
     VkSemaphore semps_wait[1];
-    semps_wait[0] = vcw_sync->img_avl_semps[cur_frame];
+    semps_wait[0] = img_avl_semp;
     VkPipelineStageFlags wait_stages[1];
     wait_stages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -633,15 +633,15 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
     sub_info.pWaitSemaphores = &(semps_wait[0]);
     sub_info.pWaitDstStageMask = &(wait_stages[0]);
     sub_info.commandBufferCount = 1;
-    sub_info.pCommandBuffers = &(vcw_cmd->cmd_bufs[img_index]);
+    sub_info.pCommandBuffers = &(cmd_buf);
 
     VkSemaphore semps_sig[1];
-    semps_sig[0] = vcw_sync->rend_fin_semps[cur_frame];
+    semps_sig[0] = rend_fin_semp;
 
     sub_info.signalSemaphoreCount = 1;
     sub_info.pSignalSemaphores = &(semps_sig[0]);
 
-    vkQueueSubmit(vcw_dev.q_graph, 1, &sub_info, vcw_sync->fens[cur_frame]);
+    vkQueueSubmit(vcw_dev.q_graph, 1, &sub_info, fence);
     //
     // present
     //
@@ -660,15 +660,16 @@ VCW_RenderResult render(VCW_VkCoreGroup vcw_core, VCW_App vcw_app) {
 
     result = vkQueuePresentKHR(vcw_dev.q_pres, &pres_info);
 
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || vcw_surf->resized) {
-        vcw_surf->resized = 0;
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || vcw_core.surf->resized) {
+        vcw_core.surf->resized = 0;
         recreate_swap(vcw_core, vcw_app);
         return 2;
     } else if (result != VK_SUCCESS) {
         printf("failed to present.\n");
     }
 
-    vcw_sync->cur_frame = (cur_frame + 1) % vcw_sync->max_frames;
+    vcw_app.sync->cur_frame = (cur_frame + 1) % vcw_app.sync->max_frames;
+    // printf("current frame: %d\n", vcw_sync->cur_frame);
 
     clock_t render_end = clock();
     vcw_app.stats->frame_time = (render_end - render_start) / (double) CLOCKS_PER_SEC;

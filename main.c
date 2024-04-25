@@ -142,6 +142,7 @@ int main(int argc, char **argv) {
         write_view_proj_mat(cam, &push_const.view);
          */
 
+        /*
         frame_time += vcw_app.stats->frame_time * 1000.0;
         frame_time /= 2;
 
@@ -158,6 +159,7 @@ int main(int argc, char **argv) {
             glfwSetWindowTitle(surf->window, title);
         }
         frame_count++;
+         */
     }
 
     vkDeviceWaitIdle(vcw_dev->dev);

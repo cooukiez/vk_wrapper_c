@@ -1,0 +1,21 @@
+# ninja log v5
+2	518	0	CMakeFiles/frag.spv	1645f2124e1942fd
+2	518	0	C:/Users/Ludw/Home/_code/cg/vk_wrapper/cmake-build-debug/CMakeFiles/frag.spv	1645f2124e1942fd
+24	537	0	CMakeFiles/vert.spv	46b122f4ccb187ae
+24	537	0	C:/Users/Ludw/Home/_code/cg/vk_wrapper/cmake-build-debug/CMakeFiles/vert.spv	46b122f4ccb187ae
+605	1402	7357366518872833	CMakeFiles/vk_wrapper.dir/util.c.obj	d61b74c5bcba6c1a
+538	2603	7357366530767114	CMakeFiles/vk_wrapper.dir/buffer.c.obj	3a1826e4a14406de
+567	2950	7357366530887125	CMakeFiles/vk_wrapper.dir/descriptor.c.obj	c41b6ca5a51a9ef5
+589	2964	7357366531732487	CMakeFiles/vk_wrapper.dir/image.c.obj	f89089582bab5167
+557	2966	7357366533483632	CMakeFiles/vk_wrapper.dir/main.c.obj	92df38ca9c5389bd
+546	3334	7357366538510093	CMakeFiles/vk_wrapper.dir/camera.c.obj	c85a55182708d23c
+2605	3784	7357366542852941	CMakeFiles/vk_wrapper.dir/vert_data.c.obj	ab49df571ef3bc3a
+1405	3786	7357366542873139	CMakeFiles/vk_wrapper.dir/render.c.obj	29b68cbe385c28ac
+2951	4503	7357366550235736	CMakeFiles/vk_wrapper.dir/vk_core.c.obj	e5d7e1b0796bfa07
+4504	6460	7357366554857373	vk_wrapper.exe	34728eaaa00ffef1
+23	371	0	CMakeFiles/frag.spv	1645f2124e1942fd
+23	371	0	C:/Users/Ludw/Home/_code/cg/vk_wrapper/cmake-build-debug/CMakeFiles/frag.spv	1645f2124e1942fd
+11	379	0	CMakeFiles/vert.spv	46b122f4ccb187ae
+11	379	0	C:/Users/Ludw/Home/_code/cg/vk_wrapper/cmake-build-debug/CMakeFiles/vert.spv	46b122f4ccb187ae
+380	1735	7357371031412331	CMakeFiles/vk_wrapper.dir/render.c.obj	29b68cbe385c28ac
+1736	3401	7357371035409061	vk_wrapper.exe	34728eaaa00ffef1

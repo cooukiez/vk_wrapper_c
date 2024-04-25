@@ -14,6 +14,8 @@ target_link_libraries(vk_wrapper Vulkan::Vulkan)
 find_package(cglm REQUIRED)
 target_link_libraries(vk_wrapper cglm::cglm)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast")
+
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto")
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
