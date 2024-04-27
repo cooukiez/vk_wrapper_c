@@ -9,6 +9,8 @@
 #define SCALE_RESOLUTION 0
 #define RESOLUTION_SCALING_FACTOR 0.5f
 
+// uploaded to kkg
+
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
     fflush(stdout);
